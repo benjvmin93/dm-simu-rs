@@ -51,7 +51,6 @@ impl Pattern {
 
 #[cfg(test)]
 mod pattern_tests {
-    use super::Pattern;
 
     #[test]
     fn test_init() {
