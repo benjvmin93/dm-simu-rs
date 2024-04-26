@@ -112,7 +112,7 @@ impl Circuit {
         }
     }
 
-    pub fn standardize_and_transpile(&self) {
+    pub fn transpile(&self) -> Pattern {
         let mut n_nodes = self.width;
         let _input: Vec<usize> = (0..n_nodes).collect::<Vec<usize>>();
         let mut _output: Vec<usize> = Vec::new();
@@ -185,6 +185,7 @@ impl Circuit {
                 _ => { continue; }
             }
         }
+        _pattern
     }
 
     fn _h_command(&self, input_node: usize, ancilla: usize) -> (usize, Vec<Command>) {
