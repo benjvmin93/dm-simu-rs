@@ -1,8 +1,56 @@
 use std::f64::consts::PI;
+use rand::Rng;
 
 use crate::pattern::Pattern;
 use crate::pattern::Command;
 use crate::pattern::Plane;
+
+#[allow(dead_code)]
+pub fn random_circuit(mut depth: usize, n_qubits: usize) -> Circuit {
+    /*
+        Random circuit generator only for 1 qubit gates.
+     */
+    let mut circuit = Circuit::new(n_qubits);
+    let mut rng = rand::thread_rng();
+    while depth != 0 {
+        let target = rng.gen_range(0..n_qubits);
+        match rng.gen_range(0..9) {
+            0 => {
+                circuit.h(target);
+            },
+            1 => {
+                circuit.s(target);
+            },
+            2 => {
+                circuit.x(target);
+            },
+            3 => {
+                circuit.y(target);
+            },
+            4 => {
+                circuit.z(target);
+            },
+            5 => {
+                circuit.i(target);
+            },
+            6 => {
+                let angle = rng.gen_range(0.0..PI);
+                circuit.rx(target, angle);
+            },
+            7 => {
+                let angle = rng.gen_range(0.0..PI);
+                circuit.ry(target, angle);
+            },
+            8 => {
+                let angle = rng.gen_range(0.0..PI);
+                circuit.rz(target, angle);
+            },
+            _ => unreachable!(),
+        };
+        depth -= 1;
+    }
+    circuit
+}
 
 #[derive(Debug)]
 #[allow(dead_code)]
