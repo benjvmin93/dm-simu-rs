@@ -1,5 +1,4 @@
 use std::f64::consts::PI;
-use std::process::Output;
 
 use crate::pattern::Pattern;
 use crate::pattern::Command;
@@ -22,7 +21,7 @@ enum Instruction {
     RY(usize, f64),
     RZ(usize, f64)
 }
-
+#[derive(Debug)]
 pub struct Circuit {
     width: usize,
     instructions: Vec<Instruction>
