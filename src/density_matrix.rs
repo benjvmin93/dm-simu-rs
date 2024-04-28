@@ -95,7 +95,7 @@ mod tests {
 
     #[test]
     fn test_density_matrix_creation() {
-        let mut q_state = QuantumState::new(2);
+        let q_state = QuantumState::new(2);
 
         let density_matrix = DensityMatrix::new(&q_state);
 
