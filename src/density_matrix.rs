@@ -3,8 +3,13 @@ use tensor::Tensor;
 
 use crate::tensor;
 
+pub enum State {
+    ZERO,
+    PLUS
+}
+
 pub fn tensor_to_dm(tensor: Tensor, size: usize) -> DensityMatrix {
-    let mut dm = DensityMatrix::new(size);
+    let mut dm = DensityMatrix::new(size, None);
     for i in 0..size {
         for j in 0..size {
             let value = tensor.get(&[2 * i, 2 * j]);
@@ -29,15 +34,34 @@ pub struct DensityMatrix {
 
 impl DensityMatrix {
     // By default initialize in |0>.
-    pub fn new(nqubits: usize) -> Self {
+    pub fn new(nqubits: usize, initial_state: Option<State>) -> Self {
         let size = 1 << nqubits;
-        let mut dm =  Self {
-            data: vec![Complex::new(0.0, 0.0); size * size],
-            size,
-            nqubits
-        };
-        dm.data[0] = Complex::new(1.0, 0.0);
-        dm
+        match initial_state {
+            Some(State::PLUS) => {  // Set density matrix to |+><+| \otimes n
+                let mut dm =  Self {
+                    data: vec![Complex::new(1., 0.); size * size],
+                    size,
+                    nqubits
+                };
+                dm.data = dm.data.iter().map(|n| *n / Complex::new(size as f64, 0.)).collect();
+                dm
+            }
+            Some(State::ZERO) => {  // Set density matrix to |0><0| \otimes n
+                let mut dm = Self {
+                    data: vec![Complex::new(0., 0.); size * size],
+                    size,
+                    nqubits
+                };
+                dm.data[0] = Complex::new(1., 0.);
+                dm
+            }
+            None => Self {  // Set all matrix elements to 0.
+                data: vec![Complex::new(0., 0.); size * size],
+                size,
+                nqubits
+            },
+        }
+        
     }
 
     // Access element at row i and column j

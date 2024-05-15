@@ -1,12 +1,12 @@
 #[cfg(test)]
 mod tests_dm {
     use num_complex::Complex;
-    use mbqc::density_matrix::DensityMatrix;
+    use mbqc::density_matrix::{DensityMatrix, State};
 
     #[test]
     fn test_to_tensor_1_qubit() {
         // Create a sample density matrix
-        let mut density_matrix = DensityMatrix::new(1);
+        let mut density_matrix = DensityMatrix::new(1, None);
         density_matrix.set(0, 0, Complex::new(1., 0.));
         density_matrix.set(0, 1, Complex::new(2., 0.));
         density_matrix.set(1, 0, Complex::new(3., 0.));
@@ -25,13 +25,72 @@ mod tests_dm {
     }
 
     #[test]
-    fn test_to_tensor_2_qubits_1() {
+    fn test_to_tensor_1_qubit_ket_0() {
         // Create a sample density matrix
-        let mut density_matrix = DensityMatrix::new(2);
-        density_matrix.set(0, 0, Complex::new(1., 0.));
-        density_matrix.set(0, 1, Complex::new(2., 0.));
-        density_matrix.set(0, 2, Complex::new(3., 0.));
-        density_matrix.set(0, 3, Complex::new(4., 0.));
+        let density_matrix = DensityMatrix::new(1, Some(State::ZERO));
+        // Convert the density matrix to a tensor
+        let tensor = density_matrix.to_tensor();
+
+        // Verify the shape of the tensor
+        assert_eq!(tensor.shape, vec![2, 2]); // Shape should be ((2,) * 2 * nqubits)
+
+        // Verify the values in the tensor
+        assert_eq!(tensor.get(&[0, 0]), Complex::new(1., 0.));
+        assert_eq!(tensor.get(&[0, 1]), Complex::new(0., 0.));
+        assert_eq!(tensor.get(&[1, 0]), Complex::new(0., 0.));
+        assert_eq!(tensor.get(&[1, 1]), Complex::new(0., 0.));
+    }
+
+    #[test]
+    fn test_to_tensor_1_qubit_ket_plus() {
+        // Create a sample density matrix
+        let density_matrix = DensityMatrix::new(1, Some(State::PLUS));
+        // Convert the density matrix to a tensor
+        let tensor = density_matrix.to_tensor();
+
+        // Verify the shape of the tensor
+        assert_eq!(tensor.shape, vec![2, 2]); // Shape should be ((2,) * 2 * nqubits)
+
+        // Verify the values in the tensor
+        assert_eq!(tensor.get(&[0, 0]), Complex::new(0.5, 0.));
+        assert_eq!(tensor.get(&[0, 1]), Complex::new(0.5, 0.));
+        assert_eq!(tensor.get(&[1, 0]), Complex::new(0.5, 0.));
+        assert_eq!(tensor.get(&[1, 1]), Complex::new(0.5, 0.));
+    }
+
+    #[test]
+    fn test_to_tensor_2_qubits_ket_plus() {
+        // Create a sample density matrix
+        let density_matrix = DensityMatrix::new(2, Some(State::PLUS));
+        // Convert the density matrix to a tensor
+        let tensor = density_matrix.to_tensor();
+
+        // Verify the shape of the tensor
+        assert_eq!(tensor.shape, vec![2, 2, 2, 2]); // Shape should be ((2,) * 2 * nqubits)
+
+        // Verify the values in the tensor
+        assert_eq!(tensor.get(&[0, 0, 0, 0]), Complex::new(0.25, 0.));
+        assert_eq!(tensor.get(&[0, 0, 0, 1]), Complex::new(0.25, 0.));
+        assert_eq!(tensor.get(&[0, 0, 1, 0]), Complex::new(0.25, 0.));
+        assert_eq!(tensor.get(&[0, 0, 1, 1]), Complex::new(0.25, 0.));
+        assert_eq!(tensor.get(&[0, 1, 0, 0]), Complex::new(0.25, 0.));
+        assert_eq!(tensor.get(&[0, 1, 0, 1]), Complex::new(0.25, 0.));
+        assert_eq!(tensor.get(&[0, 1, 1, 0]), Complex::new(0.25, 0.));
+        assert_eq!(tensor.get(&[0, 1, 1, 1]), Complex::new(0.25, 0.));
+        assert_eq!(tensor.get(&[1, 0, 0, 0]), Complex::new(0.25, 0.));
+        assert_eq!(tensor.get(&[1, 0, 0, 1]), Complex::new(0.25, 0.));
+        assert_eq!(tensor.get(&[1, 0, 1, 0]), Complex::new(0.25, 0.));
+        assert_eq!(tensor.get(&[1, 0, 1, 1]), Complex::new(0.25, 0.));
+        assert_eq!(tensor.get(&[1, 1, 0, 0]), Complex::new(0.25, 0.));
+        assert_eq!(tensor.get(&[1, 1, 0, 1]), Complex::new(0.25, 0.));
+        assert_eq!(tensor.get(&[1, 1, 1, 0]), Complex::new(0.25, 0.));
+        assert_eq!(tensor.get(&[1, 1, 1, 1]), Complex::new(0.25, 0.));
+    }
+
+    #[test]
+    fn test_to_tensor_2_qubits_ket_0() {
+        // Create a sample density matrix
+        let density_matrix = DensityMatrix::new(2, Some(State::ZERO));
         // Convert the density matrix to a tensor
         let tensor = density_matrix.to_tensor();
 
@@ -40,14 +99,27 @@ mod tests_dm {
 
         // Verify the values in the tensor
         assert_eq!(tensor.get(&[0, 0, 0, 0]), Complex::new(1., 0.));
-        assert_eq!(tensor.get(&[0, 0, 0, 1]), Complex::new(2., 0.));
-        assert_eq!(tensor.get(&[0, 0, 1, 0]), Complex::new(3., 0.));
-        assert_eq!(tensor.get(&[0, 0, 1, 1]), Complex::new(4., 0.));
+        assert_eq!(tensor.get(&[0, 0, 0, 1]), Complex::new(0., 0.));
+        assert_eq!(tensor.get(&[0, 0, 1, 0]), Complex::new(0., 0.));
+        assert_eq!(tensor.get(&[0, 0, 1, 1]), Complex::new(0., 0.));
+        assert_eq!(tensor.get(&[0, 1, 0, 0]), Complex::new(0., 0.));
+        assert_eq!(tensor.get(&[0, 1, 0, 1]), Complex::new(0., 0.));
+        assert_eq!(tensor.get(&[0, 1, 1, 0]), Complex::new(0., 0.));
+        assert_eq!(tensor.get(&[0, 1, 1, 1]), Complex::new(0., 0.));
+        assert_eq!(tensor.get(&[1, 0, 0, 0]), Complex::new(0., 0.));
+        assert_eq!(tensor.get(&[1, 0, 0, 1]), Complex::new(0., 0.));
+        assert_eq!(tensor.get(&[1, 0, 1, 0]), Complex::new(0., 0.));
+        assert_eq!(tensor.get(&[1, 0, 1, 1]), Complex::new(0., 0.));
+        assert_eq!(tensor.get(&[1, 1, 0, 0]), Complex::new(0., 0.));
+        assert_eq!(tensor.get(&[1, 1, 0, 1]), Complex::new(0., 0.));
+        assert_eq!(tensor.get(&[1, 1, 1, 0]), Complex::new(0., 0.));
+        assert_eq!(tensor.get(&[1, 1, 1, 1]), Complex::new(0., 0.));
     }
+
     #[test]
     fn test_to_tensor_2_qubits_1() {
         // Create a sample density matrix
-        let mut density_matrix = DensityMatrix::new(2);
+        let mut density_matrix = DensityMatrix::new(2, None);
         density_matrix.set(0, 0, Complex::new(1., 0.));
         density_matrix.set(0, 1, Complex::new(2., 0.));
         density_matrix.set(0, 2, Complex::new(3., 0.));
@@ -64,11 +136,10 @@ mod tests_dm {
         assert_eq!(tensor.get(&[0, 0, 1, 0]), Complex::new(3., 0.));
         assert_eq!(tensor.get(&[0, 0, 1, 1]), Complex::new(4., 0.));
     }
-
     #[test]
     fn test_to_tensor_2_qubits_2() {
         // Create a sample density matrix
-        let mut density_matrix = DensityMatrix::new(2);
+        let mut density_matrix = DensityMatrix::new(2, None);
         density_matrix.set(0, 0, Complex::new(1., 0.));
         density_matrix.set(0, 1, Complex::new(2., 0.));
         density_matrix.set(0, 2, Complex::new(3., 0.));

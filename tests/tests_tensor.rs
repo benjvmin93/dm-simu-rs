@@ -81,4 +81,63 @@ mod tests_tensor {
         assert_eq!(result_tensor.shape, vec![3, 2]);
         assert_eq!(result_tensor.data, vec![Complex::new(4., 0.), Complex::new(5., 0.), Complex::new(8., 0.),  Complex::new(10., 0.), Complex::new(12., 0.), Complex::new(15., 0.)]);
     }
+
+    #[test]
+    fn test_contract_tensors_axes() {
+        let a = Tensor::from_vec(
+            vec![
+                Complex::new(1.0, 0.0), Complex::new(2.0, 0.0), Complex::new(3.0, 0.0),
+                Complex::new(4.0, 0.0), Complex::new(5.0, 0.0), Complex::new(6.0, 0.0),
+                Complex::new(7.0, 0.0), Complex::new(8.0, 0.0), Complex::new(9.0, 0.0)
+            ],
+            vec![3, 3]
+        );
+
+        let b = Tensor::from_vec(
+            vec![
+                Complex::new(1.0, 0.0), Complex::new(1.0, 0.0), Complex::new(1.0, 0.0),
+                Complex::new(1.0, 0.0), Complex::new(1.0, 0.0), Complex::new(1.0, 0.0),
+                Complex::new(1.0, 0.0), Complex::new(1.0, 0.0), Complex::new(1.0, 0.0)
+            ],
+            vec![3, 3]
+        );
+
+        // Contract over specified axes: axis 1 of `a` and axis 0 of `b`
+        let result = a.contract(&b, Some((vec![1], vec![0])), None);
+        
+        // Check the result shape and values
+        assert_eq!(result.shape, vec![3, 3]);
+        assert_eq!(result.data, vec![
+            Complex::new(6.0, 0.0), Complex::new(6.0, 0.0), Complex::new(6.0, 0.0),
+            Complex::new(15.0, 0.0), Complex::new(15.0, 0.0), Complex::new(15.0, 0.0),
+            Complex::new(24.0, 0.0), Complex::new(24.0, 0.0), Complex::new(24.0, 0.0)
+        ]);
+    }
+
+    #[test]
+    fn test_contract_tensors_invalid_axes() {
+        let a = Tensor::from_vec(
+            vec![
+                Complex::new(1.0, 0.0), Complex::new(2.0, 0.0), Complex::new(3.0, 0.0),
+                Complex::new(4.0, 0.0), Complex::new(5.0, 0.0), Complex::new(6.0, 0.0),
+                Complex::new(7.0, 0.0), Complex::new(8.0, 0.0), Complex::new(9.0, 0.0)
+            ],
+            vec![3, 3]
+        );
+
+        let b = Tensor::from_vec(
+            vec![
+                Complex::new(1.0, 0.0), Complex::new(1.0, 0.0), Complex::new(1.0, 0.0),
+                Complex::new(1.0, 0.0), Complex::new(1.0, 0.0), Complex::new(1.0, 0.0),
+                Complex::new(1.0, 0.0), Complex::new(1.0, 0.0), Complex::new(1.0, 0.0)
+            ],
+            vec![3, 3]
+        );
+
+        // Test with mismatched axes lengths
+        let result = std::panic::catch_unwind(|| {
+            a.contract(&b, Some((vec![1, 0], vec![0])), None);
+        });
+        assert!(result.is_err());
+    }
 }
