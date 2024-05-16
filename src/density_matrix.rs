@@ -12,17 +12,31 @@ pub fn tensor_to_dm(tensor: Tensor, size: usize) -> DensityMatrix {
     let mut dm = DensityMatrix::new(size, None);
     for i in 0..size {
         for j in 0..size {
-            let value = tensor.get(&[2 * i, 2 * j]);
+            let value = tensor.get(&[2 * i as u8, 2 * j as u8]);
             dm.set(i, j, value);
         }
     }
     dm
 }
 
-fn int_to_slice_representation(num: usize, n: usize) -> Vec<usize> {
-    let bin = format!("{:0>width$b}", num, width=n);
-    let digits = bin.chars().map(|c| c.to_digit(10).unwrap() as usize).collect();
-    digits
+fn bitwise_int_to_bin_vec(mut num: usize, mut n: usize) -> Vec<u8> {
+    let mut bin_vec: Vec<u8> = Vec::new();
+    while n > 0 {
+        bin_vec.push((num & 1) as u8);
+        num >>= 1;
+        n -= 1;
+    }
+    bin_vec.reverse();
+    bin_vec
+}
+
+fn bitwise_bin_vec_to_int(bin_vec: &[u8]) -> usize {
+    let mut weight = 0;
+    bin_vec.iter().for_each(|b| {
+        weight <<= 1;
+        weight |= *b as usize;
+    });
+    weight
 }
 
 // 1D representation of a size * size density matrix.
@@ -79,7 +93,8 @@ impl DensityMatrix {
         let mut tensor = Tensor::new(shape);
         for i in 0..(self.size * self.size) {
             let data = self.data[i];
-            let tensor_index = int_to_slice_representation(i, self.size);
+            let tensor_index = bitwise_int_to_bin_vec(i, self.nqubits * 2);
+            println!("{:?}", tensor_index);
             tensor.set(&tensor_index, data);
         }
         tensor
