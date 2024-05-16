@@ -1,8 +1,33 @@
+use core::fmt;
+
 use num_complex::Complex;
+
+pub struct DisplayComplex(pub Complex<f64>);
+
+impl fmt::Display for DisplayComplex {    
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let sign = {
+            if self.0.im < 0. {
+                "+".to_string()
+            } else {
+                "-".to_string()
+            }
+        };
+        write!(f, "{}{}{}i", self.0.re, sign, self.0.im)
+    }
+}
 
 pub struct Tensor {
     pub data: Vec<Complex<f64>>,
     pub shape: Vec<usize>,
+}
+
+impl fmt::Display for Tensor {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "array(")?;
+        self.print(f, &self.shape, &self.data)?;
+        write!(f, ")")
+    }
 }
 
 impl Tensor {
@@ -15,11 +40,26 @@ impl Tensor {
         }
     }
 
-    pub fn print(&self) -> () {
-        let size = self.shape.iter().product();
-        for i in 0..size {
-            println!("{:?}", self.data[i]);
+    pub fn print(&self, f: &mut fmt::Formatter<'_>, shape: &[usize], data: &[Complex<f64>]) -> fmt::Result {
+        write!(f, "[")?;
+        if shape.len() == 1 {
+            for i in 0..self.shape[0] {
+                write!(f, "{}", DisplayComplex(data[i]))?;
+                if i < shape[0] - 1 {
+                    write!(f, ", ")?;
+                }
+            }
+        } else {
+            let sub_tensor_size: usize = shape[1..].iter().product();
+            for i in 0..shape[0] {
+                self.print(f, &shape[1..], &data[i * sub_tensor_size..(i + 1) * sub_tensor_size])?;
+                if i < shape[0] - 1 {
+                    write!(f, ",\n\t")?;
+                }
+            }
         }
+        write!(f, "]")?;
+        Ok(())
     }
 
     pub fn from_vec(vec: Vec<Complex<f64>>, shape: Vec<usize>) -> Self {
@@ -30,25 +70,25 @@ impl Tensor {
     }
 
     // Get index with the given tensor indices
-    pub fn get_index(&self, indices: &[usize]) -> usize {
+    pub fn get_index(&self, indices: &[u8]) -> usize {
         debug_assert_eq!(indices.len(), self.shape.len());
-        let mut index = 0;
-        let mut multiplier = 1;
+        let mut index: usize = 0;
+        let mut multiplier: usize = 1;
         for i in (0..indices.len()).rev() {
-            index += indices[i] * multiplier;
+            index += indices[i] as usize * multiplier;
             multiplier *= self.shape[i];
         }
         index
     }
 
     // Access element at given indices
-    pub fn get(&self, indices: &[usize]) -> Complex<f64> {
+    pub fn get(&self, indices: &[u8]) -> Complex<f64> {
         let index = self.get_index(indices);
         self.data[index]
     }
 
     // Set element at given indices
-    pub fn set(&mut self, indices: &[usize], value: Complex<f64>) {
+    pub fn set(&mut self, indices: &[u8], value: Complex<f64>) {
         let index = self.get_index(indices);
         self.data[index] = value;
     }
