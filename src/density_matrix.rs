@@ -1,42 +1,14 @@
+use core::fmt;
+
 use num_complex::Complex;
 use tensor::Tensor;
 
 use crate::tensor;
+use crate::tools::{tensor_to_dm, bitwise_int_to_bin_vec};
 
 pub enum State {
     ZERO,
     PLUS
-}
-
-pub fn tensor_to_dm(tensor: Tensor, size: usize) -> DensityMatrix {
-    let mut dm = DensityMatrix::new(size, None);
-    for i in 0..size {
-        for j in 0..size {
-            let value = tensor.get(&[2 * i as u8, 2 * j as u8]);
-            dm.set(i, j, value);
-        }
-    }
-    dm
-}
-
-fn bitwise_int_to_bin_vec(mut num: usize, mut n: usize) -> Vec<u8> {
-    let mut bin_vec: Vec<u8> = Vec::new();
-    while n > 0 {
-        bin_vec.push((num & 1) as u8);
-        num >>= 1;
-        n -= 1;
-    }
-    bin_vec.reverse();
-    bin_vec
-}
-
-fn bitwise_bin_vec_to_int(bin_vec: &[u8]) -> usize {
-    let mut weight = 0;
-    bin_vec.iter().for_each(|b| {
-        weight <<= 1;
-        weight |= *b as usize;
-    });
-    weight
 }
 
 // 1D representation of a size * size density matrix.
@@ -44,6 +16,12 @@ pub struct DensityMatrix {
     pub data: Vec<Complex<f64>>,
     pub size: usize,
     pub nqubits: usize
+}
+
+impl fmt::Display for DensityMatrix {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.print(f)
+    }
 }
 
 impl DensityMatrix {
@@ -77,6 +55,16 @@ impl DensityMatrix {
         }
         
     }
+    
+    pub fn print(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        for i in 0..self.size {
+            for j in 0..self.size {
+                write!(f, "{}", self.data[self.size * i + j])?;
+            }
+            writeln!(f, "")?;
+        }
+        writeln!(f, "\n")
+    }
 
     // Access element at row i and column j
     pub fn get(&self, i: usize, j: usize) -> Complex<f64> {
@@ -106,15 +94,5 @@ impl DensityMatrix {
         let tensor_other = other.to_tensor();
         let tensor_result = tensor_self.multiply(&tensor_other);
         tensor_to_dm(tensor_result, self.size)
-    }
-
-    pub fn print(&self) -> () {
-        for i in 0..self.size {
-            for j in 0..self.size {
-                print!("{:?}", self.data[self.size * i + j]);
-            }
-            println!("");
-        }
-        println!("\n");
     }
 }
