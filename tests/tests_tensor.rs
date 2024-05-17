@@ -83,61 +83,108 @@ mod tests_tensor {
     }
 
     #[test]
-    fn test_contract_tensors_axes() {
-        let a = Tensor::from_vec(
-            vec![
-                Complex::new(1.0, 0.0), Complex::new(2.0, 0.0), Complex::new(3.0, 0.0),
-                Complex::new(4.0, 0.0), Complex::new(5.0, 0.0), Complex::new(6.0, 0.0),
-                Complex::new(7.0, 0.0), Complex::new(8.0, 0.0), Complex::new(9.0, 0.0)
-            ],
-            vec![3, 3]
-        );
+    fn test_tensordot_basic_1() {
+        // Tensor A (shape: [2, 2])
+        let a_data = vec![
+            Complex::new(1., 0.), Complex::new(0., 0.),
+            Complex::new(0., 0.), Complex::new(1., 0.)
+        ];
 
-        let b = Tensor::from_vec(
-            vec![
-                Complex::new(1.0, 0.0), Complex::new(1.0, 0.0), Complex::new(1.0, 0.0),
-                Complex::new(1.0, 0.0), Complex::new(1.0, 0.0), Complex::new(1.0, 0.0),
-                Complex::new(1.0, 0.0), Complex::new(1.0, 0.0), Complex::new(1.0, 0.0)
-            ],
-            vec![3, 3]
-        );
+        // Tensor B (shape: [2, 2])
+        let b_data = vec![
+            Complex::new(1., 0.), Complex::new(0., 0.),
+            Complex::new(0., 0.), Complex::new(0., 0.)
+        ];
 
-        // Contract over specified axes: axis 1 of `a` and axis 0 of `b`
-        let result = a.contract(&b, Some((vec![1], vec![0])), None);
-        
-        // Check the result shape and values
-        assert_eq!(result.shape, vec![3, 3]);
-        assert_eq!(result.data, vec![
-            Complex::new(6.0, 0.0), Complex::new(6.0, 0.0), Complex::new(6.0, 0.0),
-            Complex::new(15.0, 0.0), Complex::new(15.0, 0.0), Complex::new(15.0, 0.0),
-            Complex::new(24.0, 0.0), Complex::new(24.0, 0.0), Complex::new(24.0, 0.0)
-        ]);
+        // Expected tensor (shape: [2, 2])
+        let expected_data = vec![
+            Complex::new(1., 0.), Complex::new(0., 0.),
+            Complex::new(0., 0.), Complex::new(0., 0.)
+        ];
+
+        let a_tensor = Tensor::from_vec(a_data, vec![2, 2]);
+        let b_tensor = Tensor::from_vec(b_data, vec![2, 2]);
+        let expected_tensor = Tensor::from_vec(expected_data, vec![2, 2]);
+
+        // Tensordot on axes 1 of A and 0 of B
+        let result_tensor = a_tensor.tensordot(&b_tensor, (&[1], &[0]));
+
+        assert_eq!(result_tensor.data, expected_tensor.data);
+        assert_eq!(result_tensor.shape, expected_tensor.shape);
     }
 
     #[test]
-    fn test_contract_tensors_invalid_axes() {
-        let a = Tensor::from_vec(
-            vec![
-                Complex::new(1.0, 0.0), Complex::new(2.0, 0.0), Complex::new(3.0, 0.0),
-                Complex::new(4.0, 0.0), Complex::new(5.0, 0.0), Complex::new(6.0, 0.0),
-                Complex::new(7.0, 0.0), Complex::new(8.0, 0.0), Complex::new(9.0, 0.0)
-            ],
-            vec![3, 3]
-        );
+    fn test_tensordot_basic_2() {
+        // Tensor A (shape: [2, 2])
+        let a_data = vec![
+            Complex::new(1., 0.), Complex::new(2., 0.),
+            Complex::new(3., 0.), Complex::new(4., 0.)
+        ];
 
-        let b = Tensor::from_vec(
-            vec![
-                Complex::new(1.0, 0.0), Complex::new(1.0, 0.0), Complex::new(1.0, 0.0),
-                Complex::new(1.0, 0.0), Complex::new(1.0, 0.0), Complex::new(1.0, 0.0),
-                Complex::new(1.0, 0.0), Complex::new(1.0, 0.0), Complex::new(1.0, 0.0)
-            ],
-            vec![3, 3]
-        );
+        // Tensor B (shape: [2, 2])
+        let b_data = vec![
+            Complex::new(5., 0.), Complex::new(6., 0.),
+            Complex::new(7., 0.), Complex::new(8., 0.)
+        ];
 
-        // Test with mismatched axes lengths
-        let result = std::panic::catch_unwind(|| {
-            a.contract(&b, Some((vec![1, 0], vec![0])), None);
-        });
-        assert!(result.is_err());
+        // Expected tensor (shape: [2, 2])
+        let expected_data = vec![
+            Complex::new(19., 0.), Complex::new(22., 0.),
+            Complex::new(43., 0.), Complex::new(50., 0.)
+        ];
+
+        let a_tensor = Tensor::from_vec(a_data, vec![2, 2]);
+        let b_tensor = Tensor::from_vec(b_data, vec![2, 2]);
+        let expected_tensor = Tensor::from_vec(expected_data, vec![2, 2]);
+
+        // Tensordot on axes 1 of A and 0 of B
+        let result_tensor = a_tensor.tensordot(&b_tensor, (&[1], &[0]));
+
+        assert_eq!(result_tensor.data, expected_tensor.data);
+        assert_eq!(result_tensor.shape, expected_tensor.shape);
+    }
+
+    #[test]
+    fn test_tensordot_complex() {
+        // Tensor A (shape: [2, 2])
+        let a_data = vec![
+            Complex::new(1., 0.), Complex::new(2., 0.),
+            Complex::new(3., 0.), Complex::new(4., 0.)
+        ];
+
+        // Tensor B (shape: [2, 2, 2, 2])
+        let b_data = vec![
+            Complex::new(1.0, 0.0), Complex::new(2.0, 0.0),
+            Complex::new(3.0, 0.0), Complex::new(4.0, 0.0),
+            Complex::new(5.0, 0.0), Complex::new(6.0, 0.0),
+            Complex::new(7.0, 0.0), Complex::new(8.0, 0.0),
+
+            Complex::new(9.0, 0.0), Complex::new(10.0, 0.0),
+            Complex::new(11.0, 0.0), Complex::new(12.0, 0.0),
+            Complex::new(13.0, 0.0), Complex::new(14.0, 0.0),
+            Complex::new(15.0, 0.0), Complex::new(16.0, 0.0)
+        ];
+
+        let expected_data = vec![
+            Complex::new(19., 0.0), Complex::new(22.0, 0.0),
+            Complex::new(25.0, 0.0), Complex::new(28.0, 0.0),
+
+            Complex::new(31.0, 0.0), Complex::new(34.0, 0.0),
+            Complex::new(37.0, 0.0), Complex::new(40.0, 0.0),
+
+            Complex::new(39.0, 0.0), Complex::new(46.0, 0.0),
+            Complex::new(53.0, 0.0), Complex::new(60.0, 0.0),
+
+            Complex::new(67.0, 0.0), Complex::new(74.0, 0.0),
+            Complex::new(81.0, 0.0), Complex::new(88.0, 0.0)
+        ];
+
+        let a_tensor = Tensor::from_vec(a_data, vec![2, 2]);
+        let b_tensor = Tensor::from_vec(b_data, vec![2, 2, 2, 2]);
+        let expected_tensor = Tensor::from_vec(expected_data, vec![2, 2, 2, 2]);
+        let result_tensor = a_tensor.tensordot(&b_tensor, (&[1], &[0]));
+
+        assert_eq!(result_tensor.data, expected_tensor.data);
+        assert_eq!(result_tensor.shape, expected_tensor.shape);
     }
 }

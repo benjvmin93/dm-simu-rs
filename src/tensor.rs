@@ -1,21 +1,7 @@
 use core::fmt;
-
+use std::{collections, result};
 use num_complex::Complex;
-
-pub struct DisplayComplex(pub Complex<f64>);
-
-impl fmt::Display for DisplayComplex {    
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let sign = {
-            if self.0.im < 0. {
-                "+".to_string()
-            } else {
-                "-".to_string()
-            }
-        };
-        write!(f, "{}{}{}i", self.0.re, sign, self.0.im)
-    }
-}
+use crate::tools::{bitwise_bin_vec_to_int, bitwise_int_to_bin_vec, DisplayComplex};
 
 pub struct Tensor {
     pub data: Vec<Complex<f64>>,
@@ -224,4 +210,55 @@ impl Tensor {
 
         Tensor::from_vec(result_data, result_shape)
     }
+
+    pub fn tensordot(&self, other: &Tensor, axes: (&[usize], &[usize])) -> Tensor {
+        assert_eq!(axes.0.len(), axes.1.len(), "Axes dimensions must match");
+
+        let mut new_shape_self = self.shape.clone();
+        let mut new_shape_other = other.shape.clone();
+
+        for &axis in axes.0.iter().rev() {
+            new_shape_self.remove(axis);
+        }
+
+        for &axis in axes.1.iter().rev() {
+            new_shape_other.remove(axis);
+        }
+
+        new_shape_self.extend(new_shape_other);
+        
+        let result_shape = new_shape_self;
+        let mut result_data = vec![Complex::new(0., 0.); result_shape.iter().product()];
+        let mut result = Tensor::from_vec(result_data, result_shape);
+
+        for (i, &value_self) in self.data.iter().enumerate() {
+            let indices_self = bitwise_int_to_bin_vec(i, self.shape.len());
+            let indices_common: Vec<u8> = axes.0.iter().map(|&axis| indices_self[axis]).collect();
+            let indices_self_reduced: Vec<u8> = indices_self.iter().enumerate()
+                .filter(|&(idx, _)| !axes.0.contains(&idx))
+                .map(|(_, &val)| val)
+                .collect();
+
+            for (j, &value_other) in other.data.iter().enumerate() {
+                let indices_other = bitwise_int_to_bin_vec(j, other.shape.len());
+                let indices_common_other: Vec<u8> = axes.1.iter().map(|&axis| indices_other[axis]).collect();
+
+                if indices_common == indices_common_other {
+                    let indices_other_reduces: Vec<u8> = indices_other.iter().enumerate()
+                        .filter(|&(idx, _)| !axes.1.contains(&idx))
+                        .map(|(_, &val)| val)
+                        .collect();
+                    
+                    let mut result_indices = indices_self_reduced.clone();
+                    result_indices.extend(indices_other_reduces);
+
+                    let result_index = bitwise_bin_vec_to_int(&result_indices);
+                    result.data[result_index] += value_self * value_other;
+                }
+            }
+        }
+
+        result
+    }
+
 }
