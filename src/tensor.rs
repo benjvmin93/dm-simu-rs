@@ -1,6 +1,7 @@
 use core::fmt;
 use std::{collections, result};
 use num_complex::Complex;
+use rand::Error;
 use crate::tools::{bitwise_bin_vec_to_int, bitwise_int_to_bin_vec, DisplayComplex};
 
 pub struct Tensor {
@@ -26,6 +27,15 @@ impl Tensor {
         }
     }
 
+    // Initialize a new tensor from a given vector and a given shape.
+    pub fn from_vec(vec: Vec<Complex<f64>>, shape: Vec<usize>) -> Self {
+        assert_eq!(vec.len(),  shape.iter().product(), "Vector length {} does not match the given tensor shape {:?}", vec.len(), shape);
+        Self {
+            data: vec,
+            shape
+        }
+    }
+
     pub fn print(&self, f: &mut fmt::Formatter<'_>, shape: &[usize], data: &[Complex<f64>]) -> fmt::Result {
         write!(f, "[")?;
         if shape.len() == 1 {
@@ -46,13 +56,6 @@ impl Tensor {
         }
         write!(f, "]")?;
         Ok(())
-    }
-
-    pub fn from_vec(vec: Vec<Complex<f64>>, shape: Vec<usize>) -> Self {
-        Self {
-            data: vec,
-            shape
-        }
     }
 
     // Get index with the given tensor indices
@@ -122,98 +125,11 @@ impl Tensor {
         }
     }
 
-    // Method to perform tensor contraction
-    pub fn contract(&self, other: &Tensor, axes: Option<(Vec<usize>, Vec<usize>)>, n: Option<usize>) -> Tensor {
-        let (a_axes, b_axes) = if let Some((a_axes, b_axes)) = axes {
-            (a_axes, b_axes)
-        } else if let Some(n) = n {
-            let a_ndim = self.shape.len();
-            let b_ndim = other.shape.len();
-            assert!(n <= a_ndim && n <= b_ndim, "N is larger than the number of dimensions in one of the tensors");
-            ((a_ndim - n..a_ndim).collect(), (0..n).collect())
-        } else {
-            panic!("Either axes or n must be provided");
-        };
-
-        assert_eq!(a_axes.len(), b_axes.len(), "Axes lengths must match");
-
-        // Calculate new shapes excluding the summed dimensions
-        let mut new_shape_a: Vec<usize> = self.shape.clone();
-        for &a_axis in &a_axes {
-            new_shape_a[a_axis] = 1;
+    pub fn tensordot(&self, other: &Tensor, axes: (&[usize], &[usize])) -> Result<Tensor, &str> {
+        if axes.0.len() != axes.1.len() {
+            return Err("Axes dimensions must match");
         }
-        let new_shape_a: Vec<usize> = new_shape_a.into_iter().filter(|&dim| dim != 1).collect();
-
-        let mut new_shape_b: Vec<usize> = other.shape.clone();
-        for &b_axis in &b_axes {
-            new_shape_b[b_axis] = 1;
-        }
-        let new_shape_b: Vec<usize> = new_shape_b.into_iter().filter(|&dim| dim != 1).collect();
-
-        // Initialize result tensor shape
-        let mut result_shape = new_shape_a.clone();
-        result_shape.extend(new_shape_b.iter());
-
-        // Perform the contraction
-        let mut result_data = vec![Complex::new(0.0, 0.0); result_shape.iter().product()];
-
-        let mut indices_a = vec![0; self.shape.len()];
-        let mut indices_b = vec![0; other.shape.len()];
-
-        for i in 0..self.data.len() {
-            let mut temp_index = i;
-            for j in (0..self.shape.len()).rev() {
-                indices_a[j] = temp_index % self.shape[j];
-                temp_index /= self.shape[j];
-            }
-
-            for j in 0..other.data.len() {
-                let mut temp_index = j;
-                for k in (0..other.shape.len()).rev() {
-                    indices_b[k] = temp_index % other.shape[k];
-                    temp_index /= other.shape[k];
-                }
-
-                let mut skip = false;
-                for (&a_axis, &b_axis) in a_axes.iter().zip(b_axes.iter()) {
-                    if indices_a[a_axis] != indices_b[b_axis] {
-                        skip = true;
-                        break;
-                    }
-                }
-
-                if !skip {
-                    let new_indices_a: Vec<usize> = indices_a.iter().enumerate()
-                        .filter(|&(idx, _)| !a_axes.contains(&idx))
-                        .map(|(_, &val)| val)
-                        .collect();
-
-                    let new_indices_b: Vec<usize> = indices_b.iter().enumerate()
-                        .filter(|&(idx, _)| !b_axes.contains(&idx))
-                        .map(|(_, &val)| val)
-                        .collect();
-
-                    let mut new_indices = new_indices_a.clone();
-                    new_indices.extend(new_indices_b);
-
-                    let mut result_index = 0;
-                    let mut multiplier = 1;
-                    for &idx in new_indices.iter().rev() {
-                        result_index += idx * multiplier;
-                        multiplier *= result_shape[new_indices.len() - 1];
-                    }
-
-                    result_data[result_index] += self.data[i] * other.data[j];
-                }
-            }
-        }
-
-        Tensor::from_vec(result_data, result_shape)
-    }
-
-    pub fn tensordot(&self, other: &Tensor, axes: (&[usize], &[usize])) -> Tensor {
-        assert_eq!(axes.0.len(), axes.1.len(), "Axes dimensions must match");
-
+        
         let mut new_shape_self = self.shape.clone();
         let mut new_shape_other = other.shape.clone();
 
@@ -228,7 +144,7 @@ impl Tensor {
         new_shape_self.extend(new_shape_other);
         
         let result_shape = new_shape_self;
-        let mut result_data = vec![Complex::new(0., 0.); result_shape.iter().product()];
+        let result_data = vec![Complex::new(0., 0.); result_shape.iter().product()];
         let mut result = Tensor::from_vec(result_data, result_shape);
 
         for (i, &value_self) in self.data.iter().enumerate() {
@@ -248,7 +164,7 @@ impl Tensor {
                         .filter(|&(idx, _)| !axes.1.contains(&idx))
                         .map(|(_, &val)| val)
                         .collect();
-                    
+
                     let mut result_indices = indices_self_reduced.clone();
                     result_indices.extend(indices_other_reduces);
 
@@ -257,8 +173,7 @@ impl Tensor {
                 }
             }
         }
-
-        result
+        Ok(result)
     }
 
 }

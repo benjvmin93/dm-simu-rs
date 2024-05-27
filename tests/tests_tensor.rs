@@ -73,6 +73,7 @@ mod tests_tensor {
         let tensor2 = Tensor::from_vec(vec![Complex::new(4., 0.), Complex::new(5., 0.)], vec![2]);
 
         // Calculate the tensor product
+        
         let result_tensor = tensor1.tensor_product(&tensor2);
 
         // Expected result:
@@ -107,7 +108,7 @@ mod tests_tensor {
         let expected_tensor = Tensor::from_vec(expected_data, vec![2, 2]);
 
         // Tensordot on axes 1 of A and 0 of B
-        let result_tensor = a_tensor.tensordot(&b_tensor, (&[1], &[0]));
+        let result_tensor = a_tensor.tensordot(&b_tensor, (&[1], &[0])).unwrap();
 
         assert_eq!(result_tensor.data, expected_tensor.data);
         assert_eq!(result_tensor.shape, expected_tensor.shape);
@@ -138,7 +139,7 @@ mod tests_tensor {
         let expected_tensor = Tensor::from_vec(expected_data, vec![2, 2]);
 
         // Tensordot on axes 1 of A and 0 of B
-        let result_tensor = a_tensor.tensordot(&b_tensor, (&[1], &[0]));
+        let result_tensor = a_tensor.tensordot(&b_tensor, (&[1], &[0])).unwrap();
 
         assert_eq!(result_tensor.data, expected_tensor.data);
         assert_eq!(result_tensor.shape, expected_tensor.shape);
@@ -165,6 +166,7 @@ mod tests_tensor {
             Complex::new(15.0, 0.0), Complex::new(16.0, 0.0)
         ];
 
+        // Expected tensor (shape: [2, 2, 2, 2])
         let expected_data = vec![
             Complex::new(19., 0.0), Complex::new(22.0, 0.0),
             Complex::new(25.0, 0.0), Complex::new(28.0, 0.0),
@@ -182,9 +184,10 @@ mod tests_tensor {
         let a_tensor = Tensor::from_vec(a_data, vec![2, 2]);
         let b_tensor = Tensor::from_vec(b_data, vec![2, 2, 2, 2]);
         let expected_tensor = Tensor::from_vec(expected_data, vec![2, 2, 2, 2]);
-        let result_tensor = a_tensor.tensordot(&b_tensor, (&[1], &[0]));
+        let result_tensor = a_tensor.tensordot(&b_tensor, (&[1], &[0])).unwrap();
 
         assert_eq!(result_tensor.data, expected_tensor.data);
         assert_eq!(result_tensor.shape, expected_tensor.shape);
     }
+    
 }
