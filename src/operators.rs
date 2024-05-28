@@ -47,6 +47,7 @@ impl Operator {
     pub fn two_qubits(gate: TwoQubitsOp) -> Self {
         let mut data = vec![Complex::new(0., 0.); 16];
         data[0 * 4 + 0] = Complex::new(1., 0.);
+        data[1 * 4 + 1] = Complex::new(1., 0.);
         match gate {
             TwoQubitsOp::CX => {
                 data[2 * 4 + 3] = Complex::new(1., 0.);
