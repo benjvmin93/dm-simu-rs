@@ -102,7 +102,7 @@ impl DensityMatrix {
         let tensor_self = self.to_tensor();
         let tensor_other = other.to_tensor();
         let tensor_result = tensor_self.multiply(&tensor_other);
-        tensor_to_dm(tensor_result, self.size)
+        tensor_to_dm(tensor_result)
     }
 
     /*
