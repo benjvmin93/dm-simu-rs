@@ -5,6 +5,7 @@ use tensor::Tensor;
 
 use crate::tensor;
 use crate::tools::{tensor_to_dm, bitwise_int_to_bin_vec};
+use crate::operators::{OneQubitOp, Operator, TwoQubitsOp};
 
 pub enum State {
     ZERO,
@@ -14,7 +15,7 @@ pub enum State {
 // 1D representation of a size * size density matrix.
 pub struct DensityMatrix {
     pub data: Vec<Complex<f64>>,
-    pub size: usize,
+    pub size: usize,    // 2 ** nqubits
     pub nqubits: usize
 }
 
@@ -53,13 +54,22 @@ impl DensityMatrix {
                 nqubits
             },
         }
-        
+
     }
     
     pub fn print(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "[")?;
         for i in 0..self.size {
+            write!(f, "[")?;
             for j in 0..self.size {
                 write!(f, "{}", self.data[self.size * i + j])?;
+                if j != self.size - 1 {
+                    write!(f, ", ")?;
+                }
+            }
+            write!(f, "]")?;
+            if i == self.size - 1 {
+                write!(f, "]")?;
             }
             writeln!(f, "")?;
         }
@@ -82,7 +92,6 @@ impl DensityMatrix {
         for i in 0..(self.size * self.size) {
             let data = self.data[i];
             let tensor_index = bitwise_int_to_bin_vec(i, self.nqubits * 2);
-            println!("{:?}", tensor_index);
             tensor.set(&tensor_index, data);
         }
         tensor
@@ -95,4 +104,14 @@ impl DensityMatrix {
         let tensor_result = tensor_self.multiply(&tensor_other);
         tensor_to_dm(tensor_result, self.size)
     }
+
+    /*
+    pub fn evolve_single(&self, op: OneQubitOp, index: usize) {
+        let op = Operator::one_qubit(op);
+        let op_tensor = Tensor::from_vec(op.data, vec![2, 2]);
+        let mut rho_tensor: Tensor = self.to_tensor();
+        rho_tensor = op_tensor.tensordot(&rho_tensor, (&[1], &[index])).unwrap();   // U.rho
+        rho_tensor = rho_tensor.tensordot(&rho_tensor, (&[index + self.nqubits], &[0])).unwrap();  // U.rho.U^T
+
+    } */
 }
