@@ -174,4 +174,73 @@ impl Tensor {
         Ok(result)
     }
 
+    // Helper function to calculate strides for a given shape
+    fn calculate_strides(shape: &[usize]) -> Vec<usize> {
+        let mut strides = vec![1; shape.len()];
+        for i in (0..shape.len() - 1).rev() {
+            strides[i] = strides[i + 1] * shape[i + 1];
+        }
+        strides
+    }
+
+    // Helper function to unravel a flat index to a multidimensional index
+    fn unravel_index(index: usize, shape: &[usize], strides: &[usize]) -> Vec<usize> {
+        let mut unraveled = vec![0; shape.len()];
+        let mut remainder = index;
+        for i in 0..strides.len() {
+            unraveled[i] = remainder / strides[i];
+            remainder %= strides[i];
+        }
+        unraveled
+    }
+
+    // Helper function to ravel a multidimensional index to a flat index
+    fn ravel_index(index: &[usize], strides: &[usize]) -> usize {
+        index.iter().zip(strides).map(|(i, s)| i * s).sum()
+    }
+
+    pub fn transpose(&self, axes: Vec<usize>) -> Self {
+        let axes = if axes.is_empty() {
+            (0..self.shape.len()).rev().collect()
+        } else {
+            axes
+        };
+
+        let new_shape = axes.iter().map(|&i| self.shape[i]).collect::<Vec<_>>();
+        let old_strides = Self::calculate_strides(&self.shape);
+        let new_strides = Self::calculate_strides(&new_shape);
+
+        let mut new_data = vec![Complex::new(0., 0.); self.data.len()];
+
+        for i in 0..self.data.len() {
+            let old_index = Self::unravel_index(i, &self.shape, &old_strides);
+            let new_index = axes.iter().map(|&axis| old_index[axis]).collect::<Vec<_>>();
+            let new_pos = Self::ravel_index(&new_index, &new_strides);
+            new_data[new_pos] = self.data[i].clone();
+        }
+        Tensor {
+            data: new_data,
+            shape: new_shape
+        }
+    }
+
+    pub fn moveaxis(&self, source: &[usize], dest: &[usize]) -> Result<Tensor, &str> {
+        if source.len() != dest.len() {
+            return Err("source and destination arguments must have the same number of elements");
+        }
+
+        let ndim = self.shape.len();
+        let mut order: Vec<usize> = (0..ndim).filter(|n| !source.contains(n)).collect(); // 
+
+        let mut pairs: Vec<_> = dest.iter().cloned().zip(source.iter().cloned()).collect(); // Create pairs of (destination, source) elements
+        pairs.sort_by_key(|&(dest, _)| dest);
+
+        for (dest, src) in pairs {
+            order.insert(dest, src);
+        }
+
+        let result = self.transpose(order);
+        
+        Ok(result)
+    }
 }
