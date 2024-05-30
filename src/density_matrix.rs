@@ -97,14 +97,6 @@ impl DensityMatrix {
         tensor
     }
 
-    // Perform some operation using tensor representation
-    pub fn multiply_using_tensor(&self, other: &DensityMatrix) -> DensityMatrix {
-        let tensor_self = self.to_tensor();
-        let tensor_other = other.to_tensor();
-        let tensor_result = tensor_self.multiply(&tensor_other);
-        tensor_to_dm(tensor_result)
-    }
-
     pub fn evolve_single(&mut self, op: OneQubitOp, index: usize) {
         let op = Operator::one_qubit(op);
         let op_tensor = Tensor::from_vec(op.data, vec![2, 2]);
