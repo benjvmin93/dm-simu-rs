@@ -105,13 +105,13 @@ impl DensityMatrix {
         tensor_to_dm(tensor_result)
     }
 
-    /*
-    pub fn evolve_single(&self, op: OneQubitOp, index: usize) {
+    pub fn evolve_single(&mut self, op: OneQubitOp, index: usize) {
         let op = Operator::one_qubit(op);
         let op_tensor = Tensor::from_vec(op.data, vec![2, 2]);
         let mut rho_tensor: Tensor = self.to_tensor();
         rho_tensor = op_tensor.tensordot(&rho_tensor, (&[1], &[index])).unwrap();   // U.rho
         rho_tensor = rho_tensor.tensordot(&rho_tensor, (&[index + self.nqubits], &[0])).unwrap();  // U.rho.U^T
-
-    } */
+        rho_tensor = rho_tensor.moveaxis(&[0, rho_tensor.shape.len() - 1], &[index, index + self.nqubits]).unwrap();
+        *self = tensor_to_dm(rho_tensor);
+    }
 }

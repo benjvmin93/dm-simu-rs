@@ -21,11 +21,10 @@ impl fmt::Display for DisplayComplex {
 pub fn tensor_to_dm(tensor: Tensor) -> DensityMatrix {
     let nqubits = tensor.shape.len() / 2;
     let mut dm = DensityMatrix::new(nqubits, None);
-    for i in 0..nqubits {
-        for j in 0..nqubits {
-            let value = tensor.get(&[2 * i as u8, 2 * j as u8]);
-            dm.set(i, j, value);
-        }
+    let len_tensor_shape = tensor.shape.len();
+    for i in 0..1 << nqubits { // Iterate through all possible index values
+        let data = tensor.get(&bitwise_int_to_bin_vec(i, len_tensor_shape));
+        dm.data[i] = data;
     }
     dm
 }

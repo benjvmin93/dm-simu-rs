@@ -159,21 +159,14 @@ mod tests_dm {
     }
 
     #[test]
-    fn test_tensor_to_dm_1_qubit() {
-        let dm_first = DensityMatrix::new(1, Some(State::ZERO));
-        let dm_second = tensor_to_dm(dm_first.to_tensor());
-        assert_eq!(dm_first.size, dm_second.size);
-        assert_eq!(dm_first.nqubits, dm_second.nqubits);
-        assert_eq!(dm_first.data, dm_second.data);
+    fn test_tensor_to_dm_from_1_to_8_qubits() {
+        for i in 1..8 {
+            println!("{:?}", i);
+            let dm_first = DensityMatrix::new(i, Some(State::ZERO));
+            let dm_second = tensor_to_dm(dm_first.to_tensor());
+            assert_eq!(dm_first.size, dm_second.size);
+            assert_eq!(dm_first.nqubits, dm_second.nqubits);
+            assert_eq!(dm_first.data, dm_second.data);
+        }
     }
-
-    fn test_tensor_to_dm_2_qubits() {
-        let dm_first = DensityMatrix::new(2, Some(State::ZERO));
-        let dm_second = tensor_to_dm(dm_first.to_tensor());
-        assert_eq!(dm_first.size, dm_second.size);
-        assert_eq!(dm_first.nqubits, dm_second.nqubits);
-        assert_eq!(dm_first.data, dm_second.data);
-    }
-
-
 }
