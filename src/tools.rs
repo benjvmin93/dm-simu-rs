@@ -18,10 +18,11 @@ impl fmt::Display for DisplayComplex {
     }
 }
 
-pub fn tensor_to_dm(tensor: Tensor, size: usize) -> DensityMatrix {
-    let mut dm = DensityMatrix::new(size, None);
-    for i in 0..size {
-        for j in 0..size {
+pub fn tensor_to_dm(tensor: Tensor) -> DensityMatrix {
+    let nqubits = tensor.shape.len() / 2;
+    let mut dm = DensityMatrix::new(nqubits, None);
+    for i in 0..nqubits {
+        for j in 0..nqubits {
             let value = tensor.get(&[2 * i as u8, 2 * j as u8]);
             dm.set(i, j, value);
         }
