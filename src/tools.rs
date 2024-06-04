@@ -1,4 +1,5 @@
 use core::fmt;
+use std::ops::Div;
 use num_complex::Complex;
 use crate::density_matrix::DensityMatrix;
 use crate::tensor::Tensor;
@@ -20,10 +21,14 @@ impl fmt::Display for DisplayComplex {
 
 pub fn tensor_to_dm(tensor: Tensor) -> DensityMatrix {
     let nqubits = tensor.shape.len() / 2;
+    println!("TENSOR_TO_DM: nqubits = {}", nqubits);
     let mut dm = DensityMatrix::new(nqubits, None);
     let len_tensor_shape = tensor.shape.len();
-    for i in 0..1 << nqubits { // Iterate through all possible index values
+    let mut size = 1 << nqubits;
+    size *= size;
+    for i in 0..size { // Iterate through all possible index values
         let data = tensor.get(&bitwise_int_to_bin_vec(i, len_tensor_shape));
+        println!("data index: {}, data: {}", i, data);
         dm.data[i] = data;
     }
     dm
@@ -47,4 +52,12 @@ pub fn bitwise_bin_vec_to_int(bin_vec: &[u8]) -> usize {
         weight |= *b as usize;
     });
     weight
+}
+
+pub fn complex_approx_eq(a: Complex<f64>, b: Complex<f64>, tol: f64) -> bool {
+    let re_diff = (a.re - b.re).abs();
+    let im_diff = (a.im - b.im).abs();
+    println!("re diff: {}", re_diff);
+    println!("im diff: {}", im_diff);
+    (a.re - b.re).abs() < tol && (a.im - b.im).abs() < tol
 }

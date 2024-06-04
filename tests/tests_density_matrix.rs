@@ -3,6 +3,9 @@ mod tests_dm {
     use num_complex::Complex;
     use mbqc::density_matrix::{DensityMatrix, State};
     use mbqc::tools::tensor_to_dm;
+    use mbqc::operators::OneQubitOp;
+
+    const TOLERANCE: f64 = 1e-15;
 
     #[test]
     fn test_dm_to_tensor_1_qubit() {
@@ -159,14 +162,41 @@ mod tests_dm {
     }
 
     #[test]
-    fn test_tensor_to_dm_from_1_to_8_qubits() {
+    fn test_tensor_to_dm_from_1_to_7_qubits_zero() {
         for i in 1..8 {
-            println!("{:?}", i);
             let dm_first = DensityMatrix::new(i, Some(State::ZERO));
             let dm_second = tensor_to_dm(dm_first.to_tensor());
             assert_eq!(dm_first.size, dm_second.size);
             assert_eq!(dm_first.nqubits, dm_second.nqubits);
             assert_eq!(dm_first.data, dm_second.data);
         }
+    }
+    #[test]
+    fn test_tensor_to_dm_from_1_to_7_qubits_plus() {
+        for i in 1..8 {
+            let dm_first = DensityMatrix::new(i, Some(State::PLUS));
+            let dm_second = tensor_to_dm(dm_first.to_tensor());
+            assert_eq!(dm_first.size, dm_second.size);
+            assert_eq!(dm_first.nqubits, dm_second.nqubits);
+            assert_eq!(dm_first.data, dm_second.data);
+        }
+    }
+    #[test]
+    fn test_evolve_i() {
+
+        let mut rho = DensityMatrix::new(1, Some(State::ZERO));
+        rho.evolve_single(OneQubitOp::I, 0);
+
+        let expected_data = vec![Complex::new(1., 0.), Complex::new(0., 0.), Complex::new(0., 0.), Complex::new(0., 0.)];
+        assert_eq!(rho.data, expected_data);
+    }
+    #[test]
+    fn test_evolve_h() {
+        let mut rho = DensityMatrix::new(1, Some(State::ZERO));
+        rho.evolve_single(OneQubitOp::H, 0);
+        println!("tolerance = {}", TOLERANCE);
+        println!("rho after evolve single:\n{}", rho);
+        let expected_data = vec![Complex::new(0.5, 0.), Complex::new(0.5, 0.), Complex::new(0.5, 0.), Complex::new(0.5, 0.)];
+        assert_eq!(rho.equals(DensityMatrix { data: expected_data, size: 2, nqubits: 1 }, TOLERANCE), true);
     }
 }

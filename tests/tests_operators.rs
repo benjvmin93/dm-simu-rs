@@ -4,6 +4,7 @@ mod tests_operators {
 
     use mbqc::operators::{Operator, OneQubitOp, TwoQubitsOp};
     use num_complex::Complex;
+    use mbqc::tools::complex_approx_eq;
 
     #[test]
     fn test_operator_h() {
@@ -60,5 +61,59 @@ mod tests_operators {
         assert_eq!(swap_gate.data[1 * 4 + 2], Complex::new(1., 0.));
         assert_eq!(swap_gate.data[2 * 4 + 1], Complex::new(1., 0.));
         assert_eq!(swap_gate.data[3 * 4 + 3], Complex::new(1., 0.));
+    }
+    #[test]
+    fn test_transconjugate_x() {
+        let mut x = Operator::one_qubit(OneQubitOp::X);
+        x = x.transconj();
+        print!("{}", x);
+        assert_eq!(x.data[0 * 2 + 0], Complex::new(0., 0.));
+        assert_eq!(x.data[0 * 2 + 1], Complex::new(1., 0.));
+        assert_eq!(x.data[1 * 2 + 0], Complex::new(1., 0.));
+        assert_eq!(x.data[1 * 2 + 1], Complex::new(0., 0.));
+    }
+    #[test]
+    fn test_transconjugate_y() {
+        let mut y = Operator::one_qubit(OneQubitOp::Y);
+        y = y.transconj();
+        print!("{}", y);
+        assert_eq!(y.data[0 * 2 + 0], Complex::new(0., 0.));
+        assert_eq!(y.data[0 * 2 + 1], Complex::new(0., -1.));
+        assert_eq!(y.data[1 * 2 + 0], Complex::new(0., 1.));
+        assert_eq!(y.data[1 * 2 + 1], Complex::new(0., 0.));
+    }
+    #[test]
+    fn test_transconjugate_z() {
+        let mut z = Operator::one_qubit(OneQubitOp::Z);
+        z = z.transconj();
+        print!("{}", z);
+        assert_eq!(z.data[0 * 2 + 0], Complex::new(1., 0.));
+        assert_eq!(z.data[0 * 2 + 1], Complex::new(0., 0.));
+        assert_eq!(z.data[1 * 2 + 0], Complex::new(0., 0.));
+        assert_eq!(z.data[1 * 2 + 1], Complex::new(-1., 0.));
+    }
+    #[test]
+    fn test_transconjugate_h() {
+        let mut h = Operator::one_qubit(OneQubitOp::H);
+        h = h.transconj();
+        print!("{}", h);
+        let sqrt_2_inv = FRAC_1_SQRT_2;
+        assert_eq!(h.data[0 * 2 + 0], Complex::new(sqrt_2_inv, 0.));
+        assert_eq!(h.data[0 * 2 + 1], Complex::new(sqrt_2_inv, 0.));
+        assert_eq!(h.data[1 * 2 + 0], Complex::new(sqrt_2_inv, 0.));
+        assert_eq!(h.data[1 * 2 + 1], Complex::new(sqrt_2_inv, 0.));
+    }
+    #[test]
+    fn test_transconjugate_random_unitary() {
+        let mut u = Operator::new(&vec![
+            Complex::new(0.5, 0.5), Complex::new(0.5, -0.5),
+            Complex::new(0.5, -0.5), Complex::new(0.5, 0.5)
+        ]).unwrap();
+        u = u.transconj();
+        print!("{}", u);
+        assert_eq!(u.data[0 * 2 + 0], Complex::new(0.5, -0.5));
+        assert_eq!(u.data[0 * 2 + 1], Complex::new(0.5, 0.5));
+        assert_eq!(u.data[1 * 2 + 0], Complex::new(0.5, 0.5));
+        assert_eq!(u.data[1 * 2 + 1], Complex::new(0.5, -0.5));
     }
 }

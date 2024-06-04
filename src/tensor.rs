@@ -26,10 +26,10 @@ impl Tensor {
     }
 
     // Initialize a new tensor from a given vector and a given shape.
-    pub fn from_vec(vec: Vec<Complex<f64>>, shape: Vec<usize>) -> Self {
+    pub fn from_vec(vec: &Vec<Complex<f64>>, shape: Vec<usize>) -> Self {
         assert_eq!(vec.len(),  shape.iter().product(), "Vector length {} does not match the given tensor shape {:?}", vec.len(), shape);
         Self {
-            data: vec,
+            data: vec.to_vec(),
             shape
         }
     }
@@ -143,7 +143,7 @@ impl Tensor {
         
         let result_shape = new_shape_self;
         let result_data = vec![Complex::new(0., 0.); result_shape.iter().product()];
-        let mut result = Tensor::from_vec(result_data, result_shape);
+        let mut result = Tensor::from_vec(&result_data, result_shape);
 
         for (i, &value_self) in self.data.iter().enumerate() {
             let indices_self = bitwise_int_to_bin_vec(i, self.shape.len());
