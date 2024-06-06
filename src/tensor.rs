@@ -61,8 +61,8 @@ impl Tensor {
         debug_assert_eq!(indices.len(), self.shape.len());
         let mut index: usize = 0;
         let mut multiplier: usize = 1;
-        for i in (0..indices.len()).rev() {
-            index += indices[i] as usize * multiplier;
+        for (i, &idx) in indices.iter().enumerate().rev() {
+            index += idx as usize * multiplier;
             multiplier *= self.shape[i];
         }
         index
@@ -84,8 +84,8 @@ impl Tensor {
     pub fn add(&self, other: &Tensor) -> Self {
         assert_eq!(self.shape, other.shape);
         let mut result = Self::new(self.shape.clone());
-        for i in 0..self.data.len() {
-            result.data[i] = self.data[i] + other.data[i];
+        for (i, self_data) in self.data.iter().enumerate() {
+            result.data[i] = self_data + other.data[i];
         }
         result
     }
@@ -94,8 +94,8 @@ impl Tensor {
     pub fn multiply(&self, other: &Tensor) -> Self {
         assert_eq!(self.shape, other.shape);
         let mut result = Self::new(self.shape.clone());
-        for i in 0..self.data.len() {
-            result.data[i] = self.data[i] * other.data[i];
+        for (i, self_data) in self.data.iter().enumerate() {
+            result.data[i] = self_data * other.data[i];
         }
         result
     }
@@ -112,9 +112,9 @@ impl Tensor {
 
         // Calculate the data of the resulting tensor
         let mut new_data = Vec::new();
-        for i in 0..self.data.len() {
-            for j in 0..other.data.len() {
-                new_data.push(self.data[i] * other.data[j]);
+        for self_data in self.data.iter() {
+            for other_data in other.data.iter() {
+                new_data.push(self_data * other_data);
             }
         }
         Tensor {
@@ -187,9 +187,9 @@ impl Tensor {
     fn unravel_index(index: usize, shape: &[usize], strides: &[usize]) -> Vec<usize> {
         let mut unraveled = vec![0; shape.len()];
         let mut remainder = index;
-        for i in 0..strides.len() {
-            unraveled[i] = remainder / strides[i];
-            remainder %= strides[i];
+        for (i, stride) in strides.iter().enumerate() {
+            unraveled[i] = remainder / stride;
+            remainder %= stride;
         }
         unraveled
     }
@@ -212,11 +212,11 @@ impl Tensor {
 
         let mut new_data = vec![Complex::new(0., 0.); self.data.len()];
 
-        for i in 0..self.data.len() {
+        for (i, &cell) in self.data.iter().enumerate() {
             let old_index = Self::unravel_index(i, &self.shape, &old_strides);
             let new_index = axes.iter().map(|&axis| old_index[axis]).collect::<Vec<_>>();
             let new_pos = Self::ravel_index(&new_index, &new_strides);
-            new_data[new_pos] = self.data[i].clone();
+            new_data[new_pos] = cell;
         }
         Tensor {
             data: new_data,

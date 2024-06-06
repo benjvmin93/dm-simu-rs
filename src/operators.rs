@@ -2,7 +2,6 @@ use std::{f64::consts::FRAC_1_SQRT_2, fmt};
 
 use num_complex::Complex;
 use num_traits::pow;
-use rand::Error;
 
 pub enum OneQubitOp {
     I,
