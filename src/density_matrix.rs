@@ -1,4 +1,5 @@
 use core::fmt;
+use std::arch::x86_64::_MM_MASK_OVERFLOW;
 
 use num_complex::Complex;
 use tensor::Tensor;
@@ -126,8 +127,24 @@ impl DensityMatrix {
         let mut rho_tensor: Tensor = self.to_tensor();
         rho_tensor = op_tensor.tensordot(&rho_tensor, (&[1], &[index])).unwrap();
         rho_tensor = rho_tensor.tensordot(&Tensor::from_vec(&op.transconj().data, vec![2, 2]), (&[index + self.nqubits], &[0])).unwrap();
-        rho_tensor = rho_tensor.moveaxis(&[0, rho_tensor.shape.len() - 1], &[index, index + self.nqubits]).unwrap();
+        rho_tensor = rho_tensor.moveaxis(&[0, (rho_tensor.shape.len() - 1) as i32], &[index as i32, (index + self.nqubits) as i32]).unwrap();
         *self = tensor_to_dm(rho_tensor);
+    }
+
+    pub fn evolve(&mut self, op: TwoQubitsOp, indices: &[usize]) {
+        let op = Operator::two_qubits(op);
+        let op_tensor = Tensor::from_vec(&op.data, vec![2, 2, 2, 2]);
+        let mut rho_tensor = self.to_tensor();
+        let first_axis = (0..indices.len()).map(|i| i + 2).collect::<Vec<usize>>();
+        rho_tensor = op_tensor.tensordot(&rho_tensor, (&first_axis, indices)).unwrap();
+        first_axis = indices.iter().map(|i| i + 2).collect();
+        let second_axis = (0..indices.len()).collect::<Vec<usize>>();
+        rho_tensor = rho_tensor.tensordot(&Tensor::from_vec(&op.transconj().data, vec![2, 2, 2, 2]), (&first_axis, &second_axis)).unwrap();
+        let moveaxis_src_first = (0..indices.len()).collect::<Vec<usize>>();
+        let moveaxis_src_second: Vec<_> = (1..=indices.len()).map(|i| -(i as i32)).collect();
+        let moveaxis_dest_first = indices.to_vec();
+        let moveaxis_dest_second = indices.iter().rev().map(|i| *i + self.nqubits).collect::<Vec<usize>>();
+        rho_tensor = rho_tensor.moveaxis([&moveaxis_src_first, &moveaxis_src_second].concat(), [&moveaxis_dest_first, &moveaxis_dest_second].concat()).unwrap();
     }
 
     pub fn equals(&self, other: DensityMatrix, tol: f64) -> bool {

@@ -224,19 +224,19 @@ impl Tensor {
         }
     }
 
-    pub fn moveaxis(&self, source: &[usize], dest: &[usize]) -> Result<Tensor, &str> {
+    pub fn moveaxis(&self, source: &[i32], dest: &[i32]) -> Result<Tensor, &str> {
         if source.len() != dest.len() {
             return Err("source and destination arguments must have the same number of elements");
         }
 
         let ndim = self.shape.len();
-        let mut order: Vec<usize> = (0..ndim).filter(|n| !source.contains(n)).collect(); // 
+        let mut order: Vec<usize> = (0..ndim).filter(|&n| !source.contains(&(n as i32))).collect();
 
         let mut pairs: Vec<_> = dest.iter().cloned().zip(source.iter().cloned()).collect(); // Create pairs of (destination, source) elements
         pairs.sort_by_key(|&(dest, _)| dest);
 
         for (dest, src) in pairs {
-            order.insert(dest, src);
+            order.insert(dest as usize, src as usize);
         }
 
         let result = self.transpose(order);
