@@ -131,11 +131,22 @@ impl Tensor {
         let mut new_shape_self = self.shape.clone();
         let mut new_shape_other = other.shape.clone();
 
-        for &axis in axes.0.iter().rev() {
+        let mut sorted_axes_self = axes.0.to_vec();
+        sorted_axes_self.sort_unstable_by(|a: &usize, b: &usize| b.cmp(a));
+        
+        for &axis in sorted_axes_self.iter() {
+            if axis >= new_shape_self.len() {
+                return Err("Axis out of bounds for self");
+            }
             new_shape_self.remove(axis);
         }
 
-        for &axis in axes.1.iter().rev() {
+        let mut sorted_axes_other = axes.1.to_vec();
+        sorted_axes_other.sort_unstable_by(|a, b| a.cmp(b));
+        for &axis in sorted_axes_other.iter() {
+            if axis >= new_shape_other.len() {
+                return Err("Axis out of bounds for other");
+            }
             new_shape_other.remove(axis);
         }
 
@@ -230,7 +241,22 @@ impl Tensor {
         }
 
         let ndim = self.shape.len();
-        let mut order: Vec<usize> = (0..ndim).filter(|&n| !source.contains(&(n as i32))).collect();
+
+        let convert_index = |idx: isize| -> usize {
+            if idx < 0 {
+                (ndim as isize + idx) as usize
+            } else {
+                idx as usize
+            }
+        };
+        let source: Vec<usize> = source.iter()
+            .map(|&x| convert_index(x.try_into().unwrap()))
+            .collect();
+        let dest: Vec<usize> = dest.iter()
+            .map(|&x| convert_index(x.try_into().unwrap()))
+            .collect();
+        
+        let mut order: Vec<usize> = (0..ndim).filter(|&n| !source.contains(&(n as usize))).collect();
 
         let mut pairs: Vec<_> = dest.iter().cloned().zip(source.iter().cloned()).collect(); // Create pairs of (destination, source) elements
         pairs.sort_by_key(|&(dest, _)| dest);
