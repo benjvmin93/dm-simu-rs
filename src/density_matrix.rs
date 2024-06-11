@@ -1,5 +1,4 @@
 use core::fmt;
-use std::arch::x86_64::_MM_MASK_OVERFLOW;
 
 use num_complex::Complex;
 use tensor::Tensor;
@@ -55,7 +54,27 @@ impl DensityMatrix {
                 nqubits
             },
         }
+    }
 
+    pub fn from_statevec(statevec: Vec<Complex<f64>>) -> Result<Self, &'static str> {
+        let len = statevec.len();
+        if !len.is_power_of_two() {
+            return Err("The size of the statevec is not a power of two");
+        }
+        let nqubits = len.ilog2() as usize;
+        let size = len;
+        let mut data = vec![Complex::new(0., 0.); size * size];
+        
+        for i in 0..size {
+            for j in 0..size {
+                data[i * size + j] = statevec[i] * statevec[j].conj();
+            }
+        }
+        Ok(DensityMatrix {
+            data,
+            size,
+            nqubits
+        })
     }
     
     pub fn print(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -127,24 +146,41 @@ impl DensityMatrix {
         let mut rho_tensor: Tensor = self.to_tensor();
         rho_tensor = op_tensor.tensordot(&rho_tensor, (&[1], &[index])).unwrap();
         rho_tensor = rho_tensor.tensordot(&Tensor::from_vec(&op.transconj().data, vec![2, 2]), (&[index + self.nqubits], &[0])).unwrap();
-        rho_tensor = rho_tensor.moveaxis(&[0, (rho_tensor.shape.len() - 1) as i32], &[index as i32, (index + self.nqubits) as i32]).unwrap();
+        rho_tensor = rho_tensor.moveaxis(&[0, ((rho_tensor.shape.len() - 1)).try_into().unwrap()], &[index.try_into().unwrap(), ((index + self.nqubits)).try_into().unwrap() ]).unwrap();
         *self = tensor_to_dm(rho_tensor);
     }
 
     pub fn evolve(&mut self, op: TwoQubitsOp, indices: &[usize]) {
+        let nqb_op = 2;
         let op = Operator::two_qubits(op);
         let op_tensor = Tensor::from_vec(&op.data, vec![2, 2, 2, 2]);
         let mut rho_tensor = self.to_tensor();
-        let first_axis = (0..indices.len()).map(|i| i + 2).collect::<Vec<usize>>();
-        rho_tensor = op_tensor.tensordot(&rho_tensor, (&first_axis, indices)).unwrap();
-        first_axis = indices.iter().map(|i| i + 2).collect();
-        let second_axis = (0..indices.len()).collect::<Vec<usize>>();
-        rho_tensor = rho_tensor.tensordot(&Tensor::from_vec(&op.transconj().data, vec![2, 2, 2, 2]), (&first_axis, &second_axis)).unwrap();
-        let moveaxis_src_first = (0..indices.len()).collect::<Vec<usize>>();
-        let moveaxis_src_second: Vec<_> = (1..=indices.len()).map(|i| -(i as i32)).collect();
-        let moveaxis_dest_first = indices.to_vec();
-        let moveaxis_dest_second = indices.iter().rev().map(|i| *i + self.nqubits).collect::<Vec<usize>>();
-        rho_tensor = rho_tensor.moveaxis([&moveaxis_src_first, &moveaxis_src_second].concat(), [&moveaxis_dest_first, &moveaxis_dest_second].concat()).unwrap();
+
+        rho_tensor = op_tensor.tensordot(&rho_tensor, (&(0..indices.len())
+            .map(|i| nqb_op + i)
+            .collect::<Vec<usize>>(), &indices))
+            .unwrap();
+
+        let op_transconj = op.transconj();
+        let op_transconj_tensor = Tensor::from_vec(&op_transconj.data, vec![2, 2, 2, 2]);
+        rho_tensor = rho_tensor.tensordot(&op_transconj_tensor,(
+            (&indices.iter()
+                .map(|i| i + nqb_op)
+                .collect::<Vec<usize>>()),
+            (&(0..indices.len()).collect::<Vec<usize>>())
+        )).unwrap();
+
+        let moveaxis_src_first = (0..indices.len() as i32).collect::<Vec<i32>>();
+        let moveaxis_src_second = (1..(indices.len() + 1) as i32).map(|i| -i).collect();
+        
+        let moveaxis_dest_first = indices.iter().map(|&i| i as i32).collect::<Vec<i32>>();
+        let moveaxis_dest_second = indices.iter().rev().map(|&i| i as i32 + nqb_op as i32).collect();
+        rho_tensor = rho_tensor.moveaxis(
+            &[moveaxis_src_first, moveaxis_src_second].concat(),
+            &[moveaxis_dest_first, moveaxis_dest_second].concat()
+        ).unwrap();
+        
+        *self = tensor_to_dm(rho_tensor);
     }
 
     pub fn equals(&self, other: DensityMatrix, tol: f64) -> bool {
