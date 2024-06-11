@@ -365,7 +365,7 @@ mod tests_tensor {
         );
 
         // Move axis (0, tensor.shape.len() - 1) to (0, 2)
-        let new_tensor = tensor.moveaxis(&[0, tensor.shape.len() - 1], &[0, 2]).unwrap();
+        let new_tensor = tensor.moveaxis(&[0, (tensor.shape.len() - 1) as i32], &[0, 2]).unwrap();
         assert_eq!(new_tensor.shape, vec![2, 2, 2, 2]);
 
         let expected_data = vec![
@@ -383,9 +383,8 @@ mod tests_tensor {
         ];
         assert_eq!(new_tensor.data, expected_data);
     }
-    /*
     #[test]
-    fn test_move_axis_single_to_single() {
+    fn test_moveaxis_single_to_single() {
         let tensor = Tensor {
             data: vec![Complex::new(1., 0.), Complex::new(2., 0.), Complex::new(3., 0.),
                         Complex::new(4., 0.), Complex::new(5., 0.), Complex::new(6., 0.)],
@@ -393,14 +392,67 @@ mod tests_tensor {
         };
 
         // Move axis 0 to position 1 (2x3 to 3x2)
-        let moved_matrix = tensor.moveaxis(&[0], &[1]);
+        let moved_matrix = tensor.moveaxis(&[0], &[1]).unwrap();
         assert_eq!(moved_matrix.data, vec![Complex::new(1., 0.), Complex::new(4., 0.), Complex::new(2., 0.),
                                             Complex::new(5., 0.), Complex::new(3., 0.), Complex::new(6., 0.)]);
         assert_eq!(moved_matrix.shape, vec![3, 2]); 
     }
-
     #[test]
-    fn test_move_axis_3d() {
+    fn test_moveaxis_with_negative_indices_1() {
+        let tensor = Tensor {
+            data: vec![Complex::new(1., 0.), Complex::new(2., 0.), Complex::new(3., 0.),
+                    Complex::new(4., 0.), Complex::new(5., 0.), Complex::new(6., 0.),
+
+                    Complex::new(7., 0.), Complex::new(8., 0.), Complex::new(9., 0.),
+                    Complex::new(10., 0.), Complex::new(11., 0.), Complex::new(12., 0.)],
+            shape: vec![2, 2, 3],
+        };
+
+        let result = tensor.moveaxis(&[0, -1], &[-1, 0]).unwrap();
+        assert_eq!(result.shape, vec![3, 2, 2]);
+        assert_eq!(
+            result.data,
+            vec![
+                Complex::new(1.0, 0.0), Complex::new(7.0, 0.0),
+                Complex::new(4.0, 0.0), Complex::new(10.0, 0.0),
+                Complex::new(2.0, 0.0), Complex::new(8.0, 0.0),
+
+                Complex::new(5.0, 0.0), Complex::new(11.0, 0.0),
+                Complex::new(3.0, 0.0), Complex::new(9.0, 0.0),
+                Complex::new(6.0, 0.0), Complex::new(12.0, 0.0),
+            ]
+        );
+
+    }
+    #[test]
+fn test_moveaxis_with_negative_indices_2() {
+    let tensor = Tensor::from_vec(
+        &vec![
+            Complex::new(1.0, 0.0), Complex::new(2.0, 0.0), 
+            Complex::new(3.0, 0.0), Complex::new(4.0, 0.0),
+
+            Complex::new(5.0, 0.0), Complex::new(6.0, 0.0),
+            Complex::new(7.0, 0.0), Complex::new(8.0, 0.0)
+        ],
+        vec![2, 2, 2]
+    );
+
+    let result = tensor.moveaxis(&[-1, -2], &[0, 1]).unwrap();
+    let expected = Tensor::from_vec(
+        &vec![
+            Complex::new(1.0, 0.0), Complex::new(5.0, 0.0), 
+            Complex::new(3.0, 0.0), Complex::new(7.0, 0.0),
+
+            Complex::new(2.0, 0.0), Complex::new(6.0, 0.0),
+            Complex::new(4.0, 0.0), Complex::new(8.0, 0.0)
+        ],
+        vec![2, 2, 2]
+    );
+    assert_eq!(result.data, expected.data);
+    assert_eq!(result.shape, expected.shape);
+}
+    #[test]
+    fn test_moveaxis_3d() {
         let data = (0..24).into_iter().map(|e| Complex::new(e as f64, 0.)).collect();
         let tensor_3d = Tensor {
             data,
@@ -408,27 +460,24 @@ mod tests_tensor {
         };
 
         // Move axes 0 to 2 and 2 to 0
-        let moved_tensor_3d = tensor_3d.moveaxis(&[0, 2], &[2, 0]);
+        let moved_tensor_3d = tensor_3d.moveaxis(&[0, 2], &[2, 0]).unwrap();
         assert_eq!(moved_tensor_3d.data, vec![
-            Complex::new(0., 0.), Complex::new(4., 0.), Complex::new(8., 0.), Complex::new(12., 0.), Complex::new(1., 0.), Complex::new(5., 0.), Complex::new(9., 0.), Complex::new(13., 0.), Complex::new(2., 0.), Complex::new(6., 0.), Complex::new(10., 0.), Complex::new(14., 0.), Complex::new(3., 0.), Complex::new(7., 0.), Complex::new(11., 0.), Complex::new(15., 0.),
-            Complex::new(16., 0.), Complex::new(20., 0.), Complex::new(17., 0.), Complex::new(21., 0.), Complex::new(18., 0.), Complex::new(22., 0.), Complex::new(19., 0.), Complex::new(23., 0.)
+            Complex::new(0., 0.), Complex::new(12., 0.),
+            Complex::new(4., 0.), Complex::new(16., 0.),
+            Complex::new(8., 0.), Complex::new(20., 0.),
+            
+            Complex::new(1., 0.), Complex::new(13., 0.), 
+            Complex::new(5., 0.), Complex::new(17., 0.),
+            Complex::new(9., 0.), Complex::new(21., 0.),
+
+            Complex::new(2., 0.), Complex::new(14., 0.),
+            Complex::new(6., 0.), Complex::new(18., 0.),
+            Complex::new(10., 0.), Complex::new(22., 0.),
+
+            Complex::new(3., 0.), Complex::new(15., 0.),
+            Complex::new(7., 0.), Complex::new(19., 0.),
+            Complex::new(11., 0.), Complex::new(23., 0.)
         ]);
         assert_eq!(moved_tensor_3d.shape, vec![4, 3, 2]);
     }
-    #[test]
-    fn test_move_axis_3d_single() {
-        let matrix_3d = Tensor {
-            data: (0..24).collect(),
-            shape: vec![2, 3, 4], // Shape (2, 3, 4)
-        };
-
-        // Move axis 0 to 2 (2x3x4 to 3x4x2)
-        let moved_matrix_3d = matrix_3d.move_axis(&[0], &[2]);
-        assert_eq!(moved_matrix_3d.data, vec![
-            0, 12, 1, 13, 2, 14, 3, 15, 4, 16, 5, 17, 6, 18, 7, 19,
-            8, 20, 9, 21, 10, 22, 11, 23
-        ]);
-        assert_eq!(moved_matrix_3d.shape, vec![3, 4, 2]);
-    } */
-
 }
