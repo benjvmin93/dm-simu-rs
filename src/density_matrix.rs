@@ -4,7 +4,7 @@ use num_complex::Complex;
 use tensor::Tensor;
 
 use crate::tensor;
-use crate::tools::{tensor_to_dm, bitwise_int_to_bin_vec, complex_approx_eq};
+use crate::tools::{bitwise_int_to_bin_vec, complex_approx_eq};
 use crate::operators::{OneQubitOp, Operator, TwoQubitsOp};
 
 pub enum State {
@@ -14,7 +14,7 @@ pub enum State {
 
 // 1D representation of a size * size density matrix.
 pub struct DensityMatrix {
-    pub data: Vec<Complex<f64>>,
+    pub data: Tensor<Complex<f64>>,
     pub size: usize,    // 2 ** nqubits
     pub nqubits: usize
 }
@@ -32,24 +32,25 @@ impl DensityMatrix {
         match initial_state {
             Some(State::PLUS) => {  // Set density matrix to |+><+| \otimes n
                 let mut dm =  Self {
-                    data: vec![Complex::new(1., 0.); size * size],
+                    data: Tensor::from_vec(&vec![Complex::new(1., 0.); size * size], vec![2; 2 * nqubits]),
                     size,
                     nqubits
                 };
-                dm.data = dm.data.iter().map(|n| *n / Complex::new(size as f64, 0.)).collect();
+                dm.data.data = dm.data.data.iter().map(|n| *n / Complex::new(size as f64, 0.)).collect();
                 dm
             }
             Some(State::ZERO) => {  // Set density matrix to |0><0| \otimes n
                 let mut dm = Self {
-                    data: vec![Complex::new(0., 0.); size * size],
+                    data: Tensor::from_vec(&vec![Complex::new(0., 0.); size * size], vec![2; 2 * nqubits]),
                     size,
                     nqubits
                 };
-                dm.data[0] = Complex::new(1., 0.);
+                let indices = bitwise_int_to_bin_vec(0, 2 * nqubits);
+                dm.data.set(&indices, Complex::new(1., 0.));
                 dm
             }
             None => Self {  // Set all matrix elements to 0.
-                data: vec![Complex::new(0., 0.); size * size],
+                data: Tensor::new(vec![2; 2 * nqubits]),
                 size,
                 nqubits
             },
@@ -71,7 +72,7 @@ impl DensityMatrix {
             }
         }
         Ok(DensityMatrix {
-            data,
+            data: Tensor::from_vec(&data, vec![2; 2 * nqubits]),
             size,
             nqubits
         })
@@ -82,7 +83,8 @@ impl DensityMatrix {
         for i in 0..self.size {
             write!(f, "[")?;
             for j in 0..self.size {
-                write!(f, "{}", self.data[self.size * i + j])?;
+                let indices = bitwise_int_to_bin_vec(i * self.size + j, 2 * self.nqubits);
+                write!(f, "{}", self.data.get(&indices))?;
                 if j != self.size - 1 {
                     write!(f, ", ")?;
                 }
@@ -97,16 +99,18 @@ impl DensityMatrix {
     }
 
     // Access element at row i and column j
-    pub fn get(&self, i: usize, j: usize) -> Complex<f64> {
-        self.data[i * self.size + j]
+    pub fn get(&self, i: u8, j: u8) -> Complex<f64> {
+        self.data.get(&[i, j])
     }
 
     // Set element at row i and column j
-    pub fn set(&mut self, i: usize, j: usize, value: Complex<f64>) {
-        self.data[i * self.size + j] = value;
+    pub fn set(&mut self, i: u8, j: u8, value: Complex<f64>) {
+        let size = self.size as u8;
+        let indices = bitwise_int_to_bin_vec((i * size + j) as usize, 2 * self.nqubits);
+        self.data.set(&indices, value);
     }
 
-    pub fn to_tensor(&self) -> Tensor {
+    /* pub fn to_tensor(&self) -> Tensor {
         let shape = vec![2; 2 * self.nqubits];
         let mut tensor = Tensor::new(shape);
         for i in 0..(self.size * self.size) {
@@ -115,14 +119,14 @@ impl DensityMatrix {
             tensor.set(&tensor_index, data);
         }
         tensor
-    }
+    } */
 
     pub fn trace(&self) -> Result<i32, &str> {
         // Compute sum over each diagonal elements.
         let mut trace = Complex::new(0., 0.);
         let mut step = 0;
         for i in 0..self.size {
-            trace += self.data[i * self.size + step];
+            trace += self.data.get(&[i as u8, step]);
             step += 1;
         }
         const TOLERANCE: f64 = 1e-10;
@@ -135,35 +139,33 @@ impl DensityMatrix {
 
     pub fn normalize(&mut self) {
         let trace = self.trace().unwrap() as f64;
-        self.data = self.data.iter()
+        self.data.data = self.data.data.iter()
             .map(|&c| c / trace)
             .collect::<Vec<_>>();
     }
 
     pub fn evolve_single(&mut self, op: OneQubitOp, index: usize) {
         let op = Operator::one_qubit(op);
-        let op_tensor = Tensor::from_vec(&op.data, vec![2, 2]);
-        let mut rho_tensor: Tensor = self.to_tensor();
-        rho_tensor = op_tensor.tensordot(&rho_tensor, (&[1], &[index])).unwrap();
-        rho_tensor = rho_tensor.tensordot(&Tensor::from_vec(&op.transconj().data, vec![2, 2]), (&[index + self.nqubits], &[0])).unwrap();
-        rho_tensor = rho_tensor.moveaxis(&[0, ((rho_tensor.shape.len() - 1)).try_into().unwrap()], &[index.try_into().unwrap(), ((index + self.nqubits)).try_into().unwrap() ]).unwrap();
-        *self = tensor_to_dm(rho_tensor);
+        // let op_tensor = Tensor::from_vec(&op.data, vec![2, 2]);
+        // let mut rho_tensor: Tensor<Complex<f64>> = self.data;
+        self.data = op.data.tensordot(&self.data, (&[1], &[index])).unwrap();
+        self.data = self.data.tensordot(&Tensor::from_vec(&op.transconj().data.data, vec![2, 2]), (&[index + self.nqubits], &[0])).unwrap();
+        self.data = self.data.moveaxis(&[0, ((self.data.shape.len() - 1)).try_into().unwrap()], &[index.try_into().unwrap(), ((index + self.nqubits)).try_into().unwrap() ]).unwrap();
     }
 
     pub fn evolve(&mut self, op: TwoQubitsOp, indices: &[usize]) {
         let nqb_op = 2;
         let op = Operator::two_qubits(op);
-        let op_tensor = Tensor::from_vec(&op.data, vec![2, 2, 2, 2]);
-        let mut rho_tensor = self.to_tensor();
 
-        rho_tensor = op_tensor.tensordot(&rho_tensor, (&(0..indices.len())
-            .map(|i| nqb_op + i)
-            .collect::<Vec<usize>>(), &indices))
-            .unwrap();
+        self.data = op.data.tensordot(&self.data, (
+            &(0..indices.len())
+                .map(|i| nqb_op + i)
+                .collect::<Vec<usize>>(),
+            &indices
+        )).unwrap();
 
         let op_transconj = op.transconj();
-        let op_transconj_tensor = Tensor::from_vec(&op_transconj.data, vec![2, 2, 2, 2]);
-        rho_tensor = rho_tensor.tensordot(&op_transconj_tensor,(
+        self.data = self.data.tensordot(&op_transconj.data,(
             (&indices.iter()
                 .map(|i| i + nqb_op)
                 .collect::<Vec<usize>>()),
@@ -175,18 +177,17 @@ impl DensityMatrix {
         
         let moveaxis_dest_first = indices.iter().map(|&i| i as i32).collect::<Vec<i32>>();
         let moveaxis_dest_second = indices.iter().rev().map(|&i| i as i32 + nqb_op as i32).collect();
-        rho_tensor = rho_tensor.moveaxis(
+        self.data = self.data.moveaxis(
             &[moveaxis_src_first, moveaxis_src_second].concat(),
             &[moveaxis_dest_first, moveaxis_dest_second].concat()
         ).unwrap();
         
-        *self = tensor_to_dm(rho_tensor);
     }
 
     pub fn equals(&self, other: DensityMatrix, tol: f64) -> bool {
-        if self.data.len() == other.data.len() {
-            for i in 0..self.data.len() {
-                if complex_approx_eq(self.data[i], other.data[i], tol) == false {
+        if self.data.shape.iter().product::<usize>() == other.data.shape.iter().product::<usize>() {
+            for i in 0..self.data.data.len() {
+                if complex_approx_eq(self.data.data[i], other.data.data[i], tol) == false {
                     return false;
                 }
             }

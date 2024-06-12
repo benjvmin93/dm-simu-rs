@@ -6,7 +6,7 @@ mod tests_tensor {
     #[test]
     fn test_tensor_creation() {
         let shape = vec![2, 3];
-        let tensor = Tensor::new(shape.clone());
+        let tensor: Tensor<Complex<f64>> = Tensor::new(vec![2, 3]);
         assert_eq!(tensor.shape, shape);
         assert_eq!(tensor.data.len(), 6); // 2 * 3 = 6 elements
         for &value in &tensor.data {
@@ -17,7 +17,7 @@ mod tests_tensor {
     #[test]
     fn test_tensor_get_set() {
         let shape = vec![2, 2];
-        let mut tensor = Tensor::new(shape.clone());
+        let mut tensor: Tensor<Complex<f64>> = Tensor::new(shape);
 
         // Set elements
         tensor.set(&[0, 0], Complex::new(1.0, 0.0));

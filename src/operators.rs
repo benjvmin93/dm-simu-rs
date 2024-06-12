@@ -2,6 +2,7 @@ use std::{f64::consts::FRAC_1_SQRT_2, fmt};
 
 use num_complex::Complex;
 use num_traits::pow;
+use crate::{tensor::Tensor, tools::bitwise_int_to_bin_vec};
 
 pub enum OneQubitOp {
     I,
@@ -19,7 +20,8 @@ pub enum TwoQubitsOp {
 
 pub struct Operator {
     pub is_one_qubit_op: bool,
-    pub data: Vec<Complex<f64>>
+    pub nqubits: usize,
+    pub data: Tensor<Complex<f64>>
 }
 
 impl fmt::Display for Operator {
@@ -32,6 +34,7 @@ impl Clone for Operator {
     fn clone(&self) -> Operator {
         Operator { 
             is_one_qubit_op: self.is_one_qubit_op,
+            nqubits: self.nqubits,
             data: self.data.clone()
         }
     }
@@ -40,17 +43,23 @@ impl Clone for Operator {
 impl Operator {
     pub fn new(vec: &Vec<Complex<f64>>) -> Result<Self, &str> {
         let mut is_one_qubit_op = false;
+        let mut nqubits = 2;
+        let mut shape = vec![2; 2];
         if vec.len() == 4 {
             is_one_qubit_op = true;
+            nqubits = 1;
         } else if vec.len() == 16 {
-
+            shape = vec![2; 4];
         } else {
             return Err("Operator for more than 2 qubits are not implemented.");
         }
-        Ok(Operator { is_one_qubit_op, data: vec.to_vec() })
+        
+
+        Ok(Operator { is_one_qubit_op, nqubits, data: Tensor::from_vec(vec, shape) })
     }
     pub fn one_qubit(gate: OneQubitOp) -> Self {
         let data;
+        let nqubits = 1;
         match gate {
             OneQubitOp::H => {
                 data = vec![Complex::new(FRAC_1_SQRT_2, 0.); 4];
@@ -70,36 +79,13 @@ impl Operator {
         }
         Self {
             is_one_qubit_op: true,
-            data
+            nqubits,
+            data: Tensor::from_vec(&data, vec![2, 2])
         }
-    }
-
-    pub fn print(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let size;
-        if self.is_one_qubit_op {
-            size = 2;
-        } else {
-            size = 4;
-        }
-        write!(f, "[")?;
-        for i in 0..size {
-            write!(f, "[")?;
-            for j in 0..size {
-                write!(f, "{}", self.data[size * i + j])?;
-                if j != size - 1 {
-                    write!(f, ", ")?;
-                }
-            }
-            write!(f, "]")?;
-            if i == size - 1 {
-                write!(f, "]")?;
-            }
-            writeln!(f, "")?;
-        }
-        writeln!(f, "\n")
     }
 
     pub fn two_qubits(gate: TwoQubitsOp) -> Self {
+        let nqubits = 2;
         let mut data = vec![Complex::new(0., 0.); 16];
         data[0 * 4 + 0] = Complex::new(1., 0.);
         data[1 * 4 + 1] = Complex::new(1., 0.);
@@ -120,13 +106,40 @@ impl Operator {
         }
         Self {
             is_one_qubit_op: false,
-            data
+            nqubits,
+            data: Tensor::from_vec(&data, vec![2, 2, 2, 2])
         }
     }
 
+    pub fn print(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let size;
+        if self.is_one_qubit_op {
+            size = 2;
+        } else {
+            size = 4;
+        }
+        write!(f, "[")?;
+        for i in 0..size {
+            write!(f, "[")?;
+            for j in 0..size {
+                let indices = bitwise_int_to_bin_vec(i * size + j, size);
+                write!(f, "{}", self.data.get(&indices))?;
+                if j != size - 1 {
+                    write!(f, ", ")?;
+                }
+            }
+            write!(f, "]")?;
+            if i == size - 1 {
+                write!(f, "]")?;
+            }
+            writeln!(f, "")?;
+        }
+        writeln!(f, "\n")
+    }
+
     pub fn conj(&self) -> Operator {
-        let new_data = self.data.iter().map(|e| e.conj()).collect();
-        Operator { is_one_qubit_op: self.is_one_qubit_op, data: new_data }
+        let new_data = self.data.data.iter().map(|e| e.conj()).collect::<Vec<Complex<f64>>>();
+        Operator { is_one_qubit_op: self.is_one_qubit_op, nqubits: self.nqubits, data: Tensor::from_vec(&new_data, self.data.shape.clone()) }
     }
  
     pub fn transpose(&self) -> Operator {
@@ -140,10 +153,11 @@ impl Operator {
         let mut result = vec![Complex::new(0., 0.); size * size];
         for i in 0..size {
             for j in 0..size{
-                result[j * size + i] = self.data[i * size + j];
+                let indices = bitwise_int_to_bin_vec(i * size + j, 2 * self.nqubits);
+                result[j * size + i] = self.data.get(&indices);
             }
         }
-        Operator { is_one_qubit_op: self.is_one_qubit_op, data: result }
+        Operator { is_one_qubit_op: self.is_one_qubit_op, nqubits: self.nqubits, data: Tensor::from_vec(&result, self.data.shape.clone()) } 
     }
 
     pub fn transconj(&self) -> Operator {
@@ -157,9 +171,10 @@ impl Operator {
         let mut new_data = vec![Complex::new(0., 0.); size * size];
         for i in 0..size {
             for j in 0..size{
-                new_data[j * size + i] = self.data[i * size + j].conj();
+                let indices = bitwise_int_to_bin_vec(i * size + j, 2 * self.nqubits);
+                new_data[j * size + i] = self.data.get(&indices).conj();
             }
         }
-        Operator { is_one_qubit_op: self.is_one_qubit_op, data: new_data }        
+        Operator { is_one_qubit_op: self.is_one_qubit_op, nqubits: self.nqubits, data: Tensor::from_vec(&new_data, self.data.shape.clone()) }        
     }
 }

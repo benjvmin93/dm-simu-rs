@@ -1,32 +1,41 @@
 use core::fmt;
-use num_complex::Complex;
+use num_traits::{Zero, One};
+use std::ops::{Add, Mul, AddAssign};
 use crate::tools::{bitwise_bin_vec_to_int, bitwise_int_to_bin_vec, DisplayComplex};
 
-pub struct Tensor {
-    pub data: Vec<Complex<f64>>,
+#[derive(Debug)]
+pub struct Tensor<T> {
+    pub data: Vec<T>,
     pub shape: Vec<usize>,
 }
 
-impl fmt::Display for Tensor {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "array(")?;
-        self.print(f, &self.shape, &self.data)?;
-        write!(f, ")")
+impl<T> Clone for Tensor<T>
+where
+    T: Clone
+{
+    fn clone(&self) -> Tensor<T> {
+        Tensor { 
+            data: self.data.clone(),
+            shape: self.shape.clone()
+        }
     }
 }
 
-impl Tensor {
+impl<T> Tensor<T>
+where
+    T: Zero + Clone + Mul<Output = T> + Add<Output = T> + AddAssign,
+{
     // Initialize a new tensor with given shape
     pub fn new(shape: Vec<usize>) -> Self {
         let size = shape.iter().product();
         Self {
-            data: vec![Complex::new(0.0, 0.0); size],
-            shape,
+            data: vec![T::zero(); size],
+            shape: shape.to_vec(),
         }
     }
 
     // Initialize a new tensor from a given vector and a given shape.
-    pub fn from_vec(vec: &Vec<Complex<f64>>, shape: Vec<usize>) -> Self {
+    pub fn from_vec(vec: &Vec<T>, shape: Vec<usize>) -> Self {
         assert_eq!(vec.len(),  shape.iter().product(), "Vector length {} does not match the given tensor shape {:?}", vec.len(), shape);
         Self {
             data: vec.to_vec(),
@@ -34,27 +43,31 @@ impl Tensor {
         }
     }
 
-    pub fn print(&self, f: &mut fmt::Formatter<'_>, shape: &[usize], data: &[Complex<f64>]) -> fmt::Result {
-        write!(f, "[")?;
+    pub fn print(&self, f: &mut fmt::Formatter<'_>, shape: &[usize], data: &[T]) -> fmt::Result
+    where
+        T: fmt::Debug,
+    {
         if shape.len() == 1 {
-            for i in 0..self.shape[0] {
-                write!(f, "{}", DisplayComplex(data[i]))?;
-                if i < shape[0] - 1 {
+            write!(f, "[")?;
+            for (i, item) in data.iter().enumerate() {
+                if i != 0 {
                     write!(f, ", ")?;
                 }
+                write!(f, "{:?}", item)?;
             }
+            write!(f, "]")
         } else {
-            let sub_tensor_size: usize = shape[1..].iter().product();
-            for i in 0..shape[0] {
-                self.print(f, &shape[1..], &data[i * sub_tensor_size..(i + 1) * sub_tensor_size])?;
-                if i < shape[0] - 1 {
-                    write!(f, ",\n\t")?;
+            let chunk_size: usize = shape[1..].iter().product();
+            for (i, chunk) in data.chunks(chunk_size).enumerate() {
+                if i != 0 {
+                    write!(f, ", ")?;
                 }
+                self.print(f, &shape[1..], chunk)?
             }
+            write!(f, "]")
         }
-        write!(f, "]")?;
-        Ok(())
     }
+    
 
     // Get index with the given tensor indices
     pub fn get_index(&self, indices: &[u8]) -> usize {
@@ -69,39 +82,39 @@ impl Tensor {
     }
 
     // Access element at given indices
-    pub fn get(&self, indices: &[u8]) -> Complex<f64> {
+    pub fn get(&self, indices: &[u8]) -> T {
         let index = self.get_index(indices);
-        self.data[index]
+        self.data[index].clone()
     }
 
     // Set element at given indices
-    pub fn set(&mut self, indices: &[u8], value: Complex<f64>) {
+    pub fn set(&mut self, indices: &[u8], value: T) {
         let index = self.get_index(indices);
         self.data[index] = value;
     }
 
     // Perform tensor addition
-    pub fn add(&self, other: &Tensor) -> Self {
+    pub fn add(&self, other: &Tensor<T>) -> Self {
         assert_eq!(self.shape, other.shape);
         let mut result = Self::new(self.shape.clone());
         for (i, self_data) in self.data.iter().enumerate() {
-            result.data[i] = self_data + other.data[i];
+            result.data[i] = self_data.clone() + other.data[i].clone();
         }
         result
     }
 
     // Perform tensor multiplication (element-wise)
-    pub fn multiply(&self, other: &Tensor) -> Self {
+    pub fn multiply(&self, other: &Tensor<T>) -> Self {
         assert_eq!(self.shape, other.shape);
         let mut result = Self::new(self.shape.clone());
         for (i, self_data) in self.data.iter().enumerate() {
-            result.data[i] = self_data * other.data[i];
+            result.data[i] = self_data.clone() * other.data[i].clone();
         }
         result
     }
 
     // Method to compute the tensor product of two tensors
-    pub fn tensor_product(&self, other: &Tensor) -> Tensor {
+    pub fn tensor_product(&self, other: &Tensor<T>) -> Tensor<T> {
         // Check if tensors are compatible for tensor product
         assert_eq!(self.data.len(), self.shape.iter().product());
         assert_eq!(other.data.len(), other.shape.iter().product());
@@ -114,7 +127,7 @@ impl Tensor {
         let mut new_data = Vec::new();
         for self_data in self.data.iter() {
             for other_data in other.data.iter() {
-                new_data.push(self_data * other_data);
+                new_data.push(self_data.clone() * other_data.clone());
             }
         }
         Tensor {
@@ -123,7 +136,7 @@ impl Tensor {
         }
     }
 
-    pub fn tensordot(&self, other: &Tensor, axes: (&[usize], &[usize])) -> Result<Tensor, &str> {
+    pub fn tensordot(&self, other: &Tensor<T>, axes: (&[usize], &[usize])) -> Result<Tensor<T>, &str> {
         if axes.0.len() != axes.1.len() {
             return Err("Axes dimensions must match");
         }
@@ -133,7 +146,6 @@ impl Tensor {
 
         let mut sorted_axes_self = axes.0.to_vec();
         sorted_axes_self.sort_unstable_by(|a: &usize, b: &usize| b.cmp(a));
-        
         for &axis in sorted_axes_self.iter() {
             if axis >= new_shape_self.len() {
                 return Err("Axis out of bounds for self");
@@ -142,7 +154,7 @@ impl Tensor {
         }
 
         let mut sorted_axes_other = axes.1.to_vec();
-        sorted_axes_other.sort_unstable_by(|a, b| a.cmp(b));
+        sorted_axes_other.sort_unstable_by(|a, b| b.cmp(a));
         for &axis in sorted_axes_other.iter() {
             if axis >= new_shape_other.len() {
                 return Err("Axis out of bounds for other");
@@ -153,10 +165,10 @@ impl Tensor {
         new_shape_self.extend(new_shape_other);
         
         let result_shape = new_shape_self;
-        let result_data = vec![Complex::new(0., 0.); result_shape.iter().product()];
+        let result_data = vec![T::zero(); result_shape.iter().product()];
         let mut result = Tensor::from_vec(&result_data, result_shape);
 
-        for (i, &value_self) in self.data.iter().enumerate() {
+        for (i, value_self) in self.data.iter().enumerate() {
             let indices_self = bitwise_int_to_bin_vec(i, self.shape.len());
             let indices_common: Vec<u8> = axes.0.iter().map(|&axis| indices_self[axis]).collect();
             let indices_self_reduced: Vec<u8> = indices_self.iter().enumerate()
@@ -164,7 +176,7 @@ impl Tensor {
                 .map(|(_, &val)| val)
                 .collect();
 
-            for (j, &value_other) in other.data.iter().enumerate() {
+            for (j, value_other) in other.data.iter().enumerate() {
                 let indices_other = bitwise_int_to_bin_vec(j, other.shape.len());
                 let indices_common_other: Vec<u8> = axes.1.iter().map(|&axis| indices_other[axis]).collect();
 
@@ -178,7 +190,7 @@ impl Tensor {
                     result_indices.extend(indices_other_reduces);
 
                     let result_index = bitwise_bin_vec_to_int(&result_indices);
-                    result.data[result_index] += value_self * value_other;
+                    result.data[result_index] += value_self.clone() * value_other.clone();
                 }
             }
         }
@@ -221,13 +233,13 @@ impl Tensor {
         let old_strides = Self::calculate_strides(&self.shape);
         let new_strides = Self::calculate_strides(&new_shape);
 
-        let mut new_data = vec![Complex::new(0., 0.); self.data.len()];
+        let mut new_data = vec![T::zero(); self.data.len()];
 
-        for (i, &cell) in self.data.iter().enumerate() {
+        for (i, cell) in self.data.iter().enumerate() {
             let old_index = Self::unravel_index(i, &self.shape, &old_strides);
             let new_index = axes.iter().map(|&axis| old_index[axis]).collect::<Vec<_>>();
             let new_pos = Self::ravel_index(&new_index, &new_strides);
-            new_data[new_pos] = cell;
+            new_data[new_pos] = cell.clone();
         }
         Tensor {
             data: new_data,
@@ -235,7 +247,7 @@ impl Tensor {
         }
     }
 
-    pub fn moveaxis(&self, source: &[i32], dest: &[i32]) -> Result<Tensor, &str> {
+    pub fn moveaxis(&self, source: &[i32], dest: &[i32]) -> Result<Tensor<T>, &str> {
         if source.len() != dest.len() {
             return Err("source and destination arguments must have the same number of elements");
         }
@@ -268,5 +280,16 @@ impl Tensor {
         let result = self.transpose(order);
         
         Ok(result)
+    }
+}
+
+impl<T> fmt::Display for Tensor<T>
+where
+    T: fmt::Debug + Clone + Add<Output = T> + Mul<Output = T> + AddAssign + Zero
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "array(")?;
+        self.print(f, &self.shape, &self.data)?;
+        write!(f, ")")
     }
 }
