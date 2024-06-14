@@ -7,7 +7,8 @@ use crate::tensor;
 use crate::tools::{bitwise_int_to_bin_vec, complex_approx_eq};
 use crate::operators::{OneQubitOp, Operator, TwoQubitsOp};
 
-pub enum State {
+#[pyo3::pyclass]
+#[derive(Copy, Clone)]pub enum State {
     ZERO,
     PLUS
 }
