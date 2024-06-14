@@ -2,9 +2,9 @@
 mod tests_operators {
     use std::f64::consts::FRAC_1_SQRT_2;
 
-    use mbqc::operators::{Operator, OneQubitOp, TwoQubitsOp};
+    use dm_simu_rs::operators::{Operator, OneQubitOp, TwoQubitsOp};
     use num_complex::Complex;
-    use mbqc::tools::complex_approx_eq;
+    use dm_simu_rs::tools::complex_approx_eq;
 
     #[test]
     fn test_operator_h() {

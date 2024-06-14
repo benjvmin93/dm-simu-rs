@@ -1,9 +1,9 @@
 #[cfg(test)]
 mod tests_dm {
     use num_complex::Complex;
-    use mbqc::density_matrix::{DensityMatrix, State};
-    use mbqc::operators::{OneQubitOp, TwoQubitsOp};
-    use mbqc::tensor::Tensor;
+    use dm_simu_rs::density_matrix::{DensityMatrix, State};
+    use dm_simu_rs::operators::{OneQubitOp, TwoQubitsOp};
+    use dm_simu_rs::tensor::Tensor;
 
     const TOLERANCE: f64 = 1e-15;
 

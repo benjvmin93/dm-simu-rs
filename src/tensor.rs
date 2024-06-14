@@ -1,7 +1,8 @@
 use core::fmt;
 use num_traits::{Zero, One};
 use std::ops::{Add, Mul, AddAssign};
-use crate::tools::{bitwise_bin_vec_to_int, bitwise_int_to_bin_vec, DisplayComplex};
+
+use crate::tools::{bitwise_bin_vec_to_int, bitwise_int_to_bin_vec};
 
 #[derive(Debug)]
 pub struct Tensor<T> {

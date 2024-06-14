@@ -2,7 +2,8 @@ use std::{f64::consts::FRAC_1_SQRT_2, fmt};
 
 use num_complex::Complex;
 use num_traits::pow;
-use crate::{tensor::Tensor, tools::bitwise_int_to_bin_vec};
+use crate::tensor::Tensor;
+use crate::tools::bitwise_int_to_bin_vec;
 
 pub enum OneQubitOp {
     I,

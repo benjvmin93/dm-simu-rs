@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests_tensor {
     use num_complex::Complex;
-    use mbqc::tensor::Tensor;
+    use dm_simu_rs::tensor::Tensor;
 
     #[test]
     fn test_tensor_creation() {
