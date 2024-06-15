@@ -56,7 +56,7 @@ impl Operator {
         }
         
 
-        Ok(Operator { is_one_qubit_op, nqubits, data: Tensor::from_vec(vec, shape) })
+        Ok(Operator { is_one_qubit_op, nqubits, data: Tensor::from_vec(vec, &shape) })
     }
     pub fn one_qubit(gate: OneQubitOp) -> Self {
         let data;
@@ -81,7 +81,7 @@ impl Operator {
         Self {
             is_one_qubit_op: true,
             nqubits,
-            data: Tensor::from_vec(&data, vec![2, 2])
+            data: Tensor::from_vec(&data, &[2, 2])
         }
     }
 
@@ -108,7 +108,7 @@ impl Operator {
         Self {
             is_one_qubit_op: false,
             nqubits,
-            data: Tensor::from_vec(&data, vec![2, 2, 2, 2])
+            data: Tensor::from_vec(&data, &[2, 2, 2, 2])
         }
     }
 
@@ -140,7 +140,7 @@ impl Operator {
 
     pub fn conj(&self) -> Operator {
         let new_data = self.data.data.iter().map(|e| e.conj()).collect::<Vec<Complex<f64>>>();
-        Operator { is_one_qubit_op: self.is_one_qubit_op, nqubits: self.nqubits, data: Tensor::from_vec(&new_data, self.data.shape.clone()) }
+        Operator { is_one_qubit_op: self.is_one_qubit_op, nqubits: self.nqubits, data: Tensor::from_vec(&new_data, &self.data.shape) }
     }
  
     pub fn transpose(&self) -> Operator {
@@ -158,7 +158,7 @@ impl Operator {
                 result[j * size + i] = self.data.get(&indices);
             }
         }
-        Operator { is_one_qubit_op: self.is_one_qubit_op, nqubits: self.nqubits, data: Tensor::from_vec(&result, self.data.shape.clone()) } 
+        Operator { is_one_qubit_op: self.is_one_qubit_op, nqubits: self.nqubits, data: Tensor::from_vec(&result, &self.data.shape) } 
     }
 
     pub fn transconj(&self) -> Operator {
@@ -176,6 +176,6 @@ impl Operator {
                 new_data[j * size + i] = self.data.get(&indices).conj();
             }
         }
-        Operator { is_one_qubit_op: self.is_one_qubit_op, nqubits: self.nqubits, data: Tensor::from_vec(&new_data, self.data.shape.clone()) }        
+        Operator { is_one_qubit_op: self.is_one_qubit_op, nqubits: self.nqubits, data: Tensor::from_vec(&new_data, &self.data.shape) }        
     }
 }

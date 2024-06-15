@@ -1,9 +1,10 @@
 #[cfg(test)]
-mod tests_dm {
+mod tests_dm { 
     use num_complex::Complex;
     use dm_simu_rs::density_matrix::{DensityMatrix, State};
     use dm_simu_rs::operators::{OneQubitOp, TwoQubitsOp};
     use dm_simu_rs::tensor::Tensor;
+    use num_traits::pow;
 
     const TOLERANCE: f64 = 1e-15;
 
@@ -80,6 +81,13 @@ mod tests_dm {
         assert_eq!(rho.data.data, expected_data);
         assert_eq!(rho.nqubits, 2);
         assert_eq!(rho.size, 4);
+    }
+    #[test]
+    fn test_init_from_tensor() {
+        for nqubits in 1..8 {
+            let size = pow(2, nqubits);
+            let tensor = Tensor::new(&[size, size]).unwrap();
+        }
     }
     #[test]
     fn test_dm_to_tensor_1_qubit() {

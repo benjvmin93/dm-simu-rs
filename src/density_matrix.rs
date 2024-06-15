@@ -1,6 +1,7 @@
 use core::fmt;
 
 use num_complex::Complex;
+use numpy::ndarray::IntoNdProducer;
 use tensor::Tensor;
 
 use crate::tensor;
@@ -33,7 +34,7 @@ impl DensityMatrix {
         match initial_state {
             Some(State::PLUS) => {  // Set density matrix to |+><+| \otimes n
                 let mut dm =  Self {
-                    data: Tensor::from_vec(&vec![Complex::new(1., 0.); size * size], vec![2; 2 * nqubits]),
+                    data: Tensor::from_vec(&vec![Complex::new(1., 0.); size * size], &vec![2; 2 * nqubits]),
                     size,
                     nqubits
                 };
@@ -42,7 +43,7 @@ impl DensityMatrix {
             }
             Some(State::ZERO) => {  // Set density matrix to |0><0| \otimes n
                 let mut dm = Self {
-                    data: Tensor::from_vec(&vec![Complex::new(0., 0.); size * size], vec![2; 2 * nqubits]),
+                    data: Tensor::from_vec(&vec![Complex::new(0., 0.); size * size], &vec![2; 2 * nqubits]),
                     size,
                     nqubits
                 };
@@ -51,7 +52,7 @@ impl DensityMatrix {
                 dm
             }
             None => Self {  // Set all matrix elements to 0.
-                data: Tensor::new(vec![2; 2 * nqubits]),
+                data: Tensor::new(&vec![2; 2 * nqubits]),
                 size,
                 nqubits
             },
@@ -73,10 +74,23 @@ impl DensityMatrix {
             }
         }
         Ok(DensityMatrix {
-            data: Tensor::from_vec(&data, vec![2; 2 * nqubits]),
+            data: Tensor::from_vec(&data, &vec![2; 2 * nqubits]),
             size,
             nqubits
         })
+    }
+
+    pub fn from_tensor(tensor: Tensor<Complex<f64>>) -> Result<Self, &'static str> {
+        if tensor.shape.len() != 2 {
+            return Err("Tensor has not the right shape.");
+        } else {
+            let nqubits = tensor.shape.len() / 2;
+            Ok(DensityMatrix {
+                data: tensor,
+                size: 2_i32.pow(nqubits as u32) as usize,
+                nqubits
+            })
+        }
     }
     
     pub fn print(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -122,7 +136,19 @@ impl DensityMatrix {
         tensor
     } */
 
-    pub fn trace(&self) -> Result<i32, &str> {
+    pub fn expectation_single(&self, op: OneQubitOp, index: usize) -> Result<Complex<f64>, &str> {
+        if index >= self.nqubits {
+            return Err("Wrong target qubit.");
+        }
+
+        let op_tensor = Operator::one_qubit(op);
+        let mut result_tensor = self.data.tensordot(&op_tensor.data, (&[1], &[index])).unwrap();
+        result_tensor = result_tensor.moveaxis(&[0], &[index as i32]).unwrap();
+        let dm_result = DensityMatrix::from_tensor(result_tensor).unwrap();
+        Ok(dm_result.trace())
+    }
+
+    pub fn trace(&self) -> Complex<f64> {
         // Compute sum over each diagonal elements.
         let mut trace = Complex::new(0., 0.);
         let mut step = 0;
@@ -130,16 +156,12 @@ impl DensityMatrix {
             trace += self.data.get(&[i as u8, step]);
             step += 1;
         }
-        const TOLERANCE: f64 = 1e-10;
-        if complex_approx_eq(trace, Complex::new(1., 0.), TOLERANCE) {
-            Ok(1)
-        } else {
-            Err("The sum over the diagonal elements do not make 1")
-        }
+
+        trace
     }
 
     pub fn normalize(&mut self) {
-        let trace = self.trace().unwrap() as f64;
+        let trace = self.trace();
         self.data.data = self.data.data.iter()
             .map(|&c| c / trace)
             .collect::<Vec<_>>();
@@ -150,7 +172,7 @@ impl DensityMatrix {
         // let op_tensor = Tensor::from_vec(&op.data, vec![2, 2]);
         // let mut rho_tensor: Tensor<Complex<f64>> = self.data;
         self.data = op.data.tensordot(&self.data, (&[1], &[index])).unwrap();
-        self.data = self.data.tensordot(&Tensor::from_vec(&op.transconj().data.data, vec![2, 2]), (&[index + self.nqubits], &[0])).unwrap();
+        self.data = self.data.tensordot(&Tensor::from_vec(&op.transconj().data.data, &[2, 2]), (&[index + self.nqubits], &[0])).unwrap();
         self.data = self.data.moveaxis(&[0, ((self.data.shape.len() - 1)).try_into().unwrap()], &[index.try_into().unwrap(), ((index + self.nqubits)).try_into().unwrap() ]).unwrap();
     }
 

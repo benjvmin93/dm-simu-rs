@@ -4,22 +4,10 @@ use std::ops::{Add, Mul, AddAssign};
 
 use crate::tools::{bitwise_bin_vec_to_int, bitwise_int_to_bin_vec};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Tensor<T> {
     pub data: Vec<T>,
     pub shape: Vec<usize>,
-}
-
-impl<T> Clone for Tensor<T>
-where
-    T: Clone
-{
-    fn clone(&self) -> Tensor<T> {
-        Tensor { 
-            data: self.data.clone(),
-            shape: self.shape.clone()
-        }
-    }
 }
 
 impl<T> Tensor<T>
@@ -27,7 +15,7 @@ where
     T: Zero + Clone + Mul<Output = T> + Add<Output = T> + AddAssign,
 {
     // Initialize a new tensor with given shape
-    pub fn new(shape: Vec<usize>) -> Self {
+    pub fn new(shape: &[usize]) -> Self {
         let size = shape.iter().product();
         Self {
             data: vec![T::zero(); size],
@@ -36,11 +24,11 @@ where
     }
 
     // Initialize a new tensor from a given vector and a given shape.
-    pub fn from_vec(vec: &Vec<T>, shape: Vec<usize>) -> Self {
+    pub fn from_vec(vec: &Vec<T>, shape: &[usize]) -> Self {
         assert_eq!(vec.len(),  shape.iter().product(), "Vector length {} does not match the given tensor shape {:?}", vec.len(), shape);
         Self {
             data: vec.to_vec(),
-            shape
+            shape: shape.to_vec()
         }
     }
 
@@ -97,7 +85,7 @@ where
     // Perform tensor addition
     pub fn add(&self, other: &Tensor<T>) -> Self {
         assert_eq!(self.shape, other.shape);
-        let mut result = Self::new(self.shape.clone());
+        let mut result = Self::new(&self.shape);
         for (i, self_data) in self.data.iter().enumerate() {
             result.data[i] = self_data.clone() + other.data[i].clone();
         }
@@ -107,7 +95,7 @@ where
     // Perform tensor multiplication (element-wise)
     pub fn multiply(&self, other: &Tensor<T>) -> Self {
         assert_eq!(self.shape, other.shape);
-        let mut result = Self::new(self.shape.clone());
+        let mut result = Self::new(&self.shape);
         for (i, self_data) in self.data.iter().enumerate() {
             result.data[i] = self_data.clone() * other.data[i].clone();
         }
@@ -167,7 +155,7 @@ where
         
         let result_shape = new_shape_self;
         let result_data = vec![T::zero(); result_shape.iter().product()];
-        let mut result = Tensor::from_vec(&result_data, result_shape);
+        let mut result = Tensor::from_vec(&result_data, &result_shape);
 
         for (i, value_self) in self.data.iter().enumerate() {
             let indices_self = bitwise_int_to_bin_vec(i, self.shape.len());
