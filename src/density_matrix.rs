@@ -1,7 +1,6 @@
 use core::fmt;
 
 use num_complex::Complex;
-use numpy::ndarray::IntoNdProducer;
 use tensor::Tensor;
 
 use crate::tensor;
@@ -9,7 +8,8 @@ use crate::tools::{bitwise_int_to_bin_vec, complex_approx_eq};
 use crate::operators::{OneQubitOp, Operator, TwoQubitsOp};
 
 #[pyo3::pyclass]
-#[derive(Copy, Clone)]pub enum State {
+#[derive(Copy, Clone)]
+pub enum State {
     ZERO,
     PLUS
 }
@@ -204,7 +204,6 @@ impl DensityMatrix {
             &[moveaxis_src_first, moveaxis_src_second].concat(),
             &[moveaxis_dest_first, moveaxis_dest_second].concat()
         ).unwrap();
-        
     }
 
     pub fn equals(&self, other: DensityMatrix, tol: f64) -> bool {
@@ -218,5 +217,46 @@ impl DensityMatrix {
         } else {
             false
         }
+    }
+
+    pub fn tensor(&mut self, other: &DensityMatrix) {
+        self.data = self.data.tensor_product(&other.data);
+        self.nqubits += other.nqubits;
+    }
+
+    pub fn ptrace(&mut self, qargs: &[usize]) -> Result<(), &str> {
+        let n = self.nqubits;
+        if !qargs.iter().all(|&e| e < n) {
+            return Err("Wrong qubit argument for partial trace");
+        }
+        let nqubit_after = n - qargs.len();
+        let second_trace_axe = qargs.iter().map(|e| e + n).collect::<Vec<_>>();
+        let trace_axes = [qargs, &second_trace_axe].concat();
+
+        // Build identity tensor
+        let id_tensor_size = 2_i32.pow(qargs.len() as u32) as usize;
+        let mut id_tensor = Tensor::new(&vec![2; qargs.len() * 2]);
+        for i in 0..id_tensor_size * id_tensor_size {
+            let index = bitwise_int_to_bin_vec(i * id_tensor_size + i, qargs.len() * 2);
+            id_tensor.set(&index, Complex::ONE);
+        }
+
+        let tensordot_first_axe = (0..qargs.len() * 2).collect::<Vec<usize>>();
+        let rho_res = id_tensor.tensordot(&self.data, (&tensordot_first_axe, &trace_axes)).unwrap();
+        self.data = rho_res;
+        self.nqubits = nqubit_after;
+        Ok(())
+    }
+
+    pub fn entangle(&mut self, edge: &(usize, usize)) {
+        self.evolve(TwoQubitsOp::CZ, &[edge.0, edge.1]);
+    }
+
+    pub fn swap(&mut self, edge: &(usize, usize)) {
+        self.evolve(TwoQubitsOp::SWAP, &[edge.0, edge.1]);
+    }
+
+    pub fn cnot(&mut self, edge: &(usize, usize)) {
+        self.evolve(TwoQubitsOp::CX, &[edge.0, edge.1]);
     }
 }
