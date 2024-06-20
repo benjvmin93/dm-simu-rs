@@ -6,6 +6,7 @@ pub mod tools;
 use num_complex::Complex;
 use pyo3::prelude::*;
 use density_matrix::{DensityMatrix, State};
+use operators::Operator;
 
 #[pyo3::pymodule]
 fn dm_simu_rs<'py>(
@@ -17,12 +18,24 @@ fn dm_simu_rs<'py>(
 
     type PyVec<'py> = Bound<'py, pyo3::types::PyCapsule>;
 
-    fn make_pyvec<'py>(
+    fn make_dm_pyvec<'py>(
         py: pyo3::prelude::Python<'py>,
         dm: DensityMatrix,
     ) -> pyo3::prelude::PyResult<PyVec<'py>> {
         let capsule_name = std::ffi::CString::new("dm").unwrap();
         pyo3::types::PyCapsule::new_bound(py, dm, Some(capsule_name))
+    }
+
+    fn make_op_pyvec<'py>(
+        py: pyo3::prelude::Python<'py>,
+        op: Operator,
+    ) -> pyo3::prelude::PyResult<PyVec<'py>> {
+        let capsule_name = std::ffi::CString::new("operator").unwrap();
+        pyo3::types::PyCapsule::new_bound(py, op, Some(capsule_name))
+    }
+
+    fn get_op_ref<'py>(op: PyVec<'py>) -> &Operator {
+        unsafe { op.reference::<Operator>() }
     }
 
     fn get_dm_ref<'py>(dm: PyVec<'py>) -> &DensityMatrix {
@@ -39,32 +52,55 @@ fn dm_simu_rs<'py>(
         nqubits: usize,
         initial_state: State,
     ) -> pyo3::prelude::PyResult<PyVec<'py>> {
-        make_pyvec(py, DensityMatrix::new(nqubits, Some(initial_state)))
+        make_dm_pyvec(py, DensityMatrix::new(nqubits, initial_state))
     }
     m.add_function(pyo3::wrap_pyfunction!(new_dm, m)?)?;
 
     #[pyo3::pyfunction]
-    fn from_vec<'py>(
+    fn new_dm_from_vec<'py>(
         py: pyo3::prelude::Python<'py>,
         vec: numpy::borrow::PyReadonlyArrayDyn<Complex<f64>>,
     ) -> pyo3::prelude::PyResult<PyVec<'py>> {
-        make_pyvec(
+        make_dm_pyvec(
             py,
-            DensityMatrix::from_statevec(vec.as_slice()?.to_vec())
+            DensityMatrix::from_statevec(&vec.as_slice()?)
                 .map_err(pyo3::exceptions::PyValueError::new_err)?,
         )
     }
-    m.add_function(pyo3::wrap_pyfunction!(from_vec, m)?)?;
+    m.add_function(pyo3::wrap_pyfunction!(new_dm_from_vec, m)?)?;
 
     #[pyo3::pyfunction]
     fn get_dm<'py>(
         py: pyo3::prelude::Python<'py>,
-        py_vec: PyVec<'py>,
+        dm_py_vec: PyVec<'py>,
     ) -> pyo3::prelude::Bound<'py, numpy::array::PyArray1<Complex<f64>>> {
-        let dm = get_dm_ref(py_vec);
+        let dm = get_dm_ref(dm_py_vec);
         numpy::IntoPyArray::into_pyarray_bound(dm.data.data.to_vec(), py)
     }
     m.add_function(pyo3::wrap_pyfunction!(get_dm, m)?)?;
+
+    #[pyo3::pyfunction]
+    fn new_op<'py>(
+        py: pyo3::prelude::Python<'py>,
+        data: numpy::borrow::PyReadonlyArrayDyn<Complex<f64>>,
+    ) -> pyo3::prelude::PyResult<PyVec<'py>> {
+        make_op_pyvec(
+            py,
+            Operator::new(data.as_slice()?.to_vec())
+                .map_err(pyo3::exceptions::PyValueError::new_err)?,
+        )
+    }
+    m.add_function(pyo3::wrap_pyfunction!(new_op, m)?)?;
+
+    #[pyo3::pyfunction]
+    fn get_op<'py>(
+        py: pyo3::prelude::Python<'py>,
+        op_py_vec: PyVec<'py>,
+    ) -> pyo3::prelude::Bound<'py, numpy::array::PyArray1<Complex<f64>>> {
+        let op = get_op_ref(op_py_vec);
+        numpy::IntoPyArray::into_pyarray_bound(op.data.data.to_vec(), py)
+    }
+    m.add_function(pyo3::wrap_pyfunction!(get_op, m)?)?;
 
     #[pyo3::pyfunction]
     fn get_nqubits<'py>(dm: PyVec<'py>) -> pyo3::prelude::PyResult<usize> {
@@ -74,16 +110,24 @@ fn dm_simu_rs<'py>(
     m.add_function(pyo3::wrap_pyfunction!(get_nqubits, m)?)?;
 
     #[pyo3::pyfunction]
+    fn evolve_single<'py>(py: pyo3::prelude::Python<'py>, py_dm: PyVec<'py>, py_op: PyVec<'py>, qubit: usize) -> pyo3::prelude::PyResult<()> {
+        let dm = get_dm_mut_ref(py_dm);
+        let op = get_op_ref(py_op);
+        Ok(dm.evolve_single(op, qubit))
+    }
+    m.add_function(pyo3::wrap_pyfunction!(evolve_single, m)?)?;
+
+    #[pyo3::pyfunction]
     fn entangle<'py>(py_vec: PyVec<'py>, qubits: (usize, usize)) -> pyo3::prelude::PyResult<()> {
-        let vec = get_dm_mut_ref(py_vec);
-        Ok(vec.entangle(&qubits))
+        let dm = get_dm_mut_ref(py_vec);
+        Ok(dm.entangle(&qubits))
     }
     m.add_function(pyo3::wrap_pyfunction!(entangle, m)?)?;
 
     #[pyo3::pyfunction]
     fn swap<'py>(py_vec: PyVec<'py>, qubits: (usize, usize)) -> pyo3::prelude::PyResult<()> {
-        let vec = get_dm_mut_ref(py_vec);
-        Ok(vec.swap(&qubits))
+        let dm = get_dm_mut_ref(py_vec);
+        Ok(dm.swap(&qubits))
     }
     m.add_function(pyo3::wrap_pyfunction!(swap, m)?)?;
 
