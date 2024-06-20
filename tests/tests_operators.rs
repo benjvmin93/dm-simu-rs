@@ -105,7 +105,7 @@ mod tests_operators {
     }
     #[test]
     fn test_transconjugate_random_unitary() {
-        let mut u = Operator::new(&vec![
+        let mut u = Operator::new(vec![
             Complex::new(0.5, 0.5), Complex::new(0.5, -0.5),
             Complex::new(0.5, -0.5), Complex::new(0.5, 0.5)
         ]).unwrap();

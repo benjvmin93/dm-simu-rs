@@ -24,7 +24,7 @@ where
     }
 
     // Initialize a new tensor from a given vector and a given shape.
-    pub fn from_vec(vec: &Vec<T>, shape: &[usize]) -> Self {
+    pub fn from_vec(vec: &[T], shape: &[usize]) -> Self {
         assert_eq!(vec.len(),  shape.iter().product(), "Vector length {} does not match the given tensor shape {:?}", vec.len(), shape);
         Self {
             data: vec.to_vec(),
