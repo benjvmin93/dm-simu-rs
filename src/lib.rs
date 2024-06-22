@@ -131,5 +131,13 @@ fn dm_simu_rs<'py>(
     }
     m.add_function(pyo3::wrap_pyfunction!(swap, m)?)?;
 
+    #[pyo3::pyfunction]
+    fn tensor_dm<'py>(dm: PyVec<'py>, other: PyVec<'py>) -> pyo3::prelude::PyResult<()> {
+        let dm = get_dm_mut_ref(dm);
+        let other_dm = get_dm_mut_ref(other);
+        Ok(dm.tensor(other_dm))
+    }
+    m.add_function(pyo3::wrap_pyfunction!(tensor_dm, m)?)?;
+
     Ok(())
 }

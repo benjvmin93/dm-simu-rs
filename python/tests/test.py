@@ -65,10 +65,8 @@ def test_new_dm(nqubits, state):
     np.testing.assert_allclose(array, ref.flatten())
 
 
-
 @hyp.given(array_st())
 def test_from_vec(array):
-
     print(f"array_size = {len(array)}")
     nqubits = get_nqubits(array)
     norm = get_norm(array, nqubits)
@@ -87,3 +85,21 @@ def test_from_vec(array):
     array = np.outer(array, array)
     array /= norm
     np.testing.assert_allclose(array, array2)
+
+@hyp.given(array_st(), array_st())
+def test_tensor_dm(array1, array2):
+    dm_1 = dm_simu_rs.new_dm_from_vec(array1)
+    dm_2 = dm_simu_rs.new_dm_from_vec(array2)
+    nqubits_1 = get_nqubits(array1)
+    nqubits_2 = get_nqubits(array2)
+    ref_1 = np.outer(array1, array1)
+    ref_2 = np.outer(array2, array2)
+    norm_1 = get_norm(ref_1, nqubits_1)
+    norm_2 = get_norm(ref_2, nqubits_2)
+    ref_1 /= norm_1
+    ref_2 /= norm_2
+
+    dm_simu_rs.tensor_dm(dm_1, dm_2)
+    ref = np.kron(ref_1, ref_2)
+    array = dm_simu_rs.get_dm(dm_1)
+    np.testing.assert_equal(array, ref)
