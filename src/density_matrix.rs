@@ -35,7 +35,7 @@ impl DensityMatrix {
         match initial_state {
             State::PLUS => {  // Set density matrix to |+><+| \otimes n
                 let mut dm =  Self {
-                    data: Tensor::from_vec(&vec![Complex::ONE; size * size], &vec![2; shape]),
+                    data: Tensor::from_vec(vec![Complex::ONE; size * size], vec![2; shape]),
                     size,
                     nqubits
                 };
@@ -44,7 +44,7 @@ impl DensityMatrix {
             }
             State::ZERO => {  // Set density matrix to |0><0| \otimes n
                 let mut dm = Self {
-                    data: Tensor::from_vec(&vec![Complex::ZERO; size * size], &vec![2; shape]),
+                    data: Tensor::from_vec(vec![Complex::ZERO; size * size], vec![2; shape]),
                     size,
                     nqubits
                 };
@@ -62,15 +62,15 @@ impl DensityMatrix {
         }
         let nqubits = len.ilog2() as usize;
         let size = len;
-        let mut data = vec![Complex::ZERO; size * size];
-        
+        let mut data = Vec::with_capacity(size * size);
+
         for i in 0..size {
             for j in 0..size {
-                data[i * size + j] = statevec[i] * statevec[j].conj();
+                data.push(statevec[i] * statevec[j].conj());
             }
         }
         Ok(DensityMatrix {
-            data: Tensor::from_vec(&data, &vec![2; 2 * nqubits]),
+            data: Tensor::from_vec(data, vec![2; 2 * nqubits]),
             size,
             nqubits
         })
@@ -165,7 +165,7 @@ impl DensityMatrix {
 
     pub fn evolve_single(&mut self, op: &Operator, index: usize) {
         self.data = op.data.tensordot(&self.data, (&[1], &[index])).unwrap();
-        self.data = self.data.tensordot(&Tensor::from_vec(&op.transconj().data.data, &[2, 2]), (&[index + self.nqubits], &[0])).unwrap();
+        self.data = self.data.tensordot(&Tensor::from_vec(op.transconj().data.data, vec![2, 2]), (&[index + self.nqubits], &[0])).unwrap();
         self.data = self.data.moveaxis(&[0, ((self.data.shape.len() - 1)).try_into().unwrap()], &[index.try_into().unwrap(), ((index + self.nqubits)).try_into().unwrap()]).unwrap();
     }
 

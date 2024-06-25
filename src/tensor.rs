@@ -24,11 +24,11 @@ where
     }
 
     // Initialize a new tensor from a given vector and a given shape.
-    pub fn from_vec(vec: &[T], shape: &[usize]) -> Self {
+    pub fn from_vec(vec: Vec<T>, shape: Vec<usize>) -> Self {
         assert_eq!(vec.len(),  shape.iter().product(), "Vector length {} does not match the given tensor shape {:?}", vec.len(), shape);
         Self {
-            data: vec.to_vec(),
-            shape: shape.to_vec()
+            data: vec,
+            shape
         }
     }
 
@@ -155,7 +155,7 @@ where
         
         let result_shape = new_shape_self;
         let result_data = vec![T::zero(); result_shape.iter().product()];
-        let mut result = Tensor::from_vec(&result_data, &result_shape);
+        let mut result = Tensor::from_vec(result_data, result_shape);
 
         for (i, value_self) in self.data.iter().enumerate() {
             let indices_self = bitwise_int_to_bin_vec(i, self.shape.len());
