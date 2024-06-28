@@ -73,15 +73,16 @@ impl Operator {
         let nqubits = 2;
         let mut data = vec![Complex::ZERO; 16];
         data[0 * 4 + 0] = Complex::ONE;
-        data[1 * 4 + 1] = Complex::ONE;
         match gate {
             TwoQubitsOp::CX => {
                 data[2 * 4 + 3] = Complex::ONE;
                 data[3 * 4 + 2] = Complex::ONE;
+                data[1 * 4 + 1] = Complex::ONE;
             },
             TwoQubitsOp::CZ => {
                 data[2 * 4 + 2] = Complex::ONE;
                 data[3 * 4 + 3] = Complex::new(-1., 0.);
+                data[1 * 4 + 1] = Complex::ONE;
             },
             TwoQubitsOp::SWAP => {
                 data[2 * 4 + 1] = Complex::ONE;
