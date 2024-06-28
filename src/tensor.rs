@@ -110,15 +110,15 @@ where
 
         // Calculate the shape of the resulting tensor
         let mut new_shape = self.shape.clone();
-        new_shape.extend(other.shape.iter().cloned());
+        new_shape.extend_from_slice(&other.shape);
 
         // Calculate the data of the resulting tensor
-        let mut new_data = Vec::new();
-        for self_data in self.data.iter() {
-            for other_data in other.data.iter() {
-                new_data.push(self_data.clone() * other_data.clone());
-            }
-        }
+        let new_data: Vec<T> = self
+            .data
+            .iter()
+            .flat_map(|x| other.data.iter().map(move |y| x.clone() * y.clone()))
+            .collect();
+
         Tensor {
             data: new_data,
             shape: new_shape,
