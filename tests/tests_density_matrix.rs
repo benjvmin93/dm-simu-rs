@@ -292,5 +292,85 @@ mod tests_dm {
         assert_eq!(expected_data, rho.data.data);
     }
     
+    #[test]
+    fn test_evolve_swap_ket001_1() {
+        let mut rho = DensityMatrix::from_statevec(&[
+            Complex::ZERO, Complex::ONE, Complex::ZERO, Complex::ZERO, 
+            Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO
+        ]).unwrap();
+
+        rho.evolve(&Operator::two_qubits(TwoQubitsOp::SWAP), &[2, 1]);
+        let expected_data = vec![
+            Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO,
+            Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO,
+            Complex::ZERO, Complex::ZERO, Complex::ONE, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO,
+            Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO,
+            Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO,
+            Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO,
+            Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO,
+            Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO,
+        ];
+        assert_eq!(expected_data, rho.data.data);
+    }
+    #[test]
+    fn test_evolve_swap_ket001_2() {
+        let mut rho = DensityMatrix::from_statevec(&[
+            Complex::ZERO, Complex::ONE, Complex::ZERO, Complex::ZERO, 
+            Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO
+        ]).unwrap();
+
+        rho.evolve(&Operator::two_qubits(TwoQubitsOp::SWAP), &[1, 2]);
+        let expected_data = vec![
+            Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO,
+            Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO,
+            Complex::ZERO, Complex::ZERO, Complex::ONE, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO,
+            Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO,
+            Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO,
+            Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO,
+            Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO,
+            Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO,
+        ];
+        assert_eq!(expected_data, rho.data.data);
+    }
+    #[test]
+    fn test_evolve_swap_ket100_1() {
+        let mut rho = DensityMatrix::from_statevec(&[
+            Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, 
+            Complex::ONE, Complex::ZERO, Complex::ZERO, Complex::ZERO
+        ]).unwrap();
+
+        rho.evolve(&Operator::two_qubits(TwoQubitsOp::SWAP), &[2, 0]);
+        let expected_data = vec![
+            Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO,
+            Complex::ZERO, Complex::ONE, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO,
+            Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO,
+            Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO,
+            Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO,
+            Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO,
+            Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO,
+            Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO,
+        ];
+        assert_eq!(expected_data, rho.data.data);
+    }
+    #[test]
+    fn test_evolve_swap_ket100_2() {
+        let mut rho = DensityMatrix::from_statevec(&[
+            Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, 
+            Complex::ONE, Complex::ZERO, Complex::ZERO, Complex::ZERO
+        ]).unwrap();
+
+        rho.evolve(&Operator::two_qubits(TwoQubitsOp::SWAP), &[0, 2]);
+        let expected_data = vec![
+            Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO,
+            Complex::ZERO, Complex::ONE, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO,
+            Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO,
+            Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO,
+            Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO,
+            Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO,
+            Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO,
+            Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO,
+        ];
+        assert_eq!(expected_data, rho.data.data);
+    }
 
 }

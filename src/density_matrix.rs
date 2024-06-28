@@ -171,31 +171,28 @@ impl DensityMatrix {
 
     pub fn evolve(&mut self, op: &Operator, indices: &[usize]) {
         let nqb_op = op.nqubits;
-
-        self.data = op.data.tensordot(&self.data, (
-            &(0..indices.len())
-                .map(|i| nqb_op + i)
-                .collect::<Vec<usize>>(),
-            &indices
-        )).unwrap();
+        let first_axe = (0..indices.len()).map(|i| nqb_op + i).collect::<Vec<usize>>();
+        let second_axe = indices;
+        self.data = op.data.tensordot(
+            &self.data, 
+            (&first_axe, &second_axe)).unwrap();
 
         let op_transconj = op.transconj();
-        self.data = self.data.tensordot(&op_transconj.data,(
-            (&indices.iter()
-                .map(|i| i + nqb_op)
-                .collect::<Vec<usize>>()),
-            (&(0..indices.len()).collect::<Vec<usize>>())
-        )).unwrap();
+        let first_axe = indices.iter().map(|i| i + self.nqubits).collect::<Vec<usize>>();
+        let second_axe = (0..indices.len()).collect::<Vec<usize>>();
+        self.data = self.data.tensordot(
+            &op_transconj.data,
+            (&first_axe, &second_axe)).unwrap();
 
         let moveaxis_src_first = (0..indices.len() as i32).collect::<Vec<i32>>();
         let moveaxis_src_second = (1..(indices.len() + 1) as i32).map(|i| -i).collect();
+        let src = [moveaxis_src_first, moveaxis_src_second].concat();
         
         let moveaxis_dest_first = indices.iter().map(|&i| i as i32).collect::<Vec<i32>>();
-        let moveaxis_dest_second = indices.iter().rev().map(|&i| i as i32 + nqb_op as i32).collect();
-        self.data = self.data.moveaxis(
-            &[moveaxis_src_first, moveaxis_src_second].concat(),
-            &[moveaxis_dest_first, moveaxis_dest_second].concat()
-        ).unwrap();
+        let moveaxis_dest_second = indices.iter().rev().map(|&i| i as i32 + self.nqubits as i32).collect();
+        let dst = [moveaxis_dest_first, moveaxis_dest_second].concat();
+
+        self.data = self.data.moveaxis(&src, &dst).unwrap();
     }
 
     pub fn equals(&self, other: DensityMatrix, tol: f64) -> bool {
