@@ -4,7 +4,7 @@ use num_complex::Complex;
 use tensor::Tensor;
 
 use crate::tensor;
-use crate::tools::{bitwise_int_to_bin_vec, complex_approx_eq};
+use crate::tools::{bitwise_int_to_bin_vec, complex_approx_eq, are_elements_unique};
 use crate::operators::{OneQubitOp, Operator, TwoQubitsOp};
 
 #[pyo3::pyclass]
@@ -121,17 +121,6 @@ impl DensityMatrix {
         self.data.set(&indices, value);
     }
 
-    /* pub fn to_tensor(&self) -> Tensor {
-        let shape = vec![2; 2 * self.nqubits];
-        let mut tensor = Tensor::new(shape);
-        for i in 0..(self.size * self.size) {
-            let data = self.data[i];
-            let tensor_index = bitwise_int_to_bin_vec(i, self.nqubits * 2);
-            tensor.set(&tensor_index, data);
-        }
-        tensor
-    } */
-
     pub fn expectation_single(&self, op: OneQubitOp, index: usize) -> Result<Complex<f64>, &str> {
         if index >= self.nqubits {
             return Err("Wrong target qubit.");
@@ -163,13 +152,31 @@ impl DensityMatrix {
             .collect::<Vec<_>>();
     }
 
-    pub fn evolve_single(&mut self, op: &Operator, index: usize) {
+    pub fn evolve_single(&mut self, op: &Operator, index: usize) -> Result<(), String> {
+        if index >= self.nqubits {
+            return Err(format!("Target qubit {} is not in the range [0-{}].", index, self.nqubits));
+        }
+        if op.nqubits != 1 {
+            return Err(format!("Passed operator is not a one qubit operator."));
+        }
+
         self.data = op.data.tensordot(&self.data, (&[1], &[index])).unwrap();
         self.data = self.data.tensordot(&Tensor::from_vec(op.transconj().data.data, vec![2, 2]), (&[index + self.nqubits], &[0])).unwrap();
         self.data = self.data.moveaxis(&[0, ((self.data.shape.len() - 1)).try_into().unwrap()], &[index.try_into().unwrap(), ((index + self.nqubits)).try_into().unwrap()]).unwrap();
+
+        Ok(())
     }
 
-    pub fn evolve(&mut self, op: &Operator, indices: &[usize]) {
+    pub fn evolve(&mut self, op: &Operator, indices: &[usize]) -> Result<(), String> {
+        if !are_elements_unique(indices) {
+            return Err("Target qubits must be unique.".to_string());
+        }
+        for &i in indices.iter() {
+            if i >= self.nqubits {
+                return Err(format!("Target qubit {} is not in the range [0-{}].", i, self.nqubits));
+            }
+        }
+
         let nqb_op = op.nqubits;
         let first_axe = (0..indices.len()).map(|i| nqb_op + i).collect::<Vec<usize>>();
         let second_axe = indices;
@@ -193,6 +200,8 @@ impl DensityMatrix {
         let dst = [moveaxis_dest_first, moveaxis_dest_second].concat();
 
         self.data = self.data.moveaxis(&src, &dst).unwrap();
+
+        Ok(())
     }
 
     pub fn equals(&self, other: DensityMatrix, tol: f64) -> bool {

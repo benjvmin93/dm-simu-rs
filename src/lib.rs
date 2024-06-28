@@ -113,9 +113,17 @@ fn dm_simu_rs<'py>(
     fn evolve_single<'py>(py: pyo3::prelude::Python<'py>, py_dm: PyVec<'py>, py_op: PyVec<'py>, qubit: usize) -> pyo3::prelude::PyResult<()> {
         let dm = get_dm_mut_ref(py_dm);
         let op = get_op_ref(py_op);
-        Ok(dm.evolve_single(op, qubit))
+        Ok(dm.evolve_single(op, qubit).unwrap())
     }
     m.add_function(pyo3::wrap_pyfunction!(evolve_single, m)?)?;
+
+    #[pyo3::pyfunction]
+    fn evolve<'py>(py: pyo3::prelude::Python<'py>, py_dm: PyVec<'py>, py_op: PyVec<'py>, qubits: Vec<usize>) -> pyo3::prelude::PyResult<()> {
+        let dm = get_dm_mut_ref(py_dm);
+        let op = get_op_ref(py_op);
+        Ok(dm.evolve(op, &qubits).unwrap())
+    }
+    m.add_function(pyo3::wrap_pyfunction!(evolve, m)?)?;
 
     #[pyo3::pyfunction]
     fn entangle<'py>(py_vec: PyVec<'py>, qubits: (usize, usize)) -> pyo3::prelude::PyResult<()> {
