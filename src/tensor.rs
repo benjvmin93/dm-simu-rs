@@ -134,7 +134,7 @@ where
         let mut new_shape_other = other.shape.clone();
 
         let mut sorted_axes_self = axes.0.to_vec();
-        sorted_axes_self.sort_unstable_by(|a: &usize, b: &usize| b.cmp(a));
+        sorted_axes_self.sort_by(|a: &usize, b: &usize| b.cmp(a));
         for &axis in sorted_axes_self.iter() {
             if axis >= new_shape_self.len() {
                 return Err("Axis out of bounds for self");
@@ -143,7 +143,7 @@ where
         }
 
         let mut sorted_axes_other = axes.1.to_vec();
-        sorted_axes_other.sort_unstable_by(|a, b| b.cmp(a));
+        sorted_axes_other.sort_by(|a, b| b.cmp(a));
         for &axis in sorted_axes_other.iter() {
             if axis >= new_shape_other.len() {
                 return Err("Axis out of bounds for other");
@@ -155,22 +155,22 @@ where
         
         let result_shape = new_shape_self;
         let result_data = vec![T::zero(); result_shape.iter().product()];
-        let mut result = Tensor::from_vec(result_data, result_shape);
+        let mut result = Tensor::from_vec(result_data, result_shape.clone());
 
         for (i, value_self) in self.data.iter().enumerate() {
-            let indices_self = bitwise_int_to_bin_vec(i, self.shape.len());
-            let indices_common: Vec<u8> = axes.0.iter().map(|&axis| indices_self[axis]).collect();
-            let indices_self_reduced: Vec<u8> = indices_self.iter().enumerate()
+            let indices_self = Self::unravel_index(i, &self.shape);
+            let indices_common: Vec<_> = axes.0.iter().map(|&axis| indices_self[axis]).collect();
+            let indices_self_reduced: Vec<_> = indices_self.iter().enumerate()
                 .filter(|&(idx, _)| !axes.0.contains(&idx))
                 .map(|(_, &val)| val)
                 .collect();
 
             for (j, value_other) in other.data.iter().enumerate() {
-                let indices_other = bitwise_int_to_bin_vec(j, other.shape.len());
-                let indices_common_other: Vec<u8> = axes.1.iter().map(|&axis| indices_other[axis]).collect();
+                let indices_other = Self::unravel_index(j, &other.shape);
+                let indices_common_other: Vec<_> = axes.1.iter().map(|&axis| indices_other[axis]).collect();
 
                 if indices_common == indices_common_other {
-                    let indices_other_reduces: Vec<u8> = indices_other.iter().enumerate()
+                    let indices_other_reduces: Vec<_> = indices_other.iter().enumerate()
                         .filter(|&(idx, _)| !axes.1.contains(&idx))
                         .map(|(_, &val)| val)
                         .collect();
@@ -178,62 +178,89 @@ where
                     let mut result_indices = indices_self_reduced.clone();
                     result_indices.extend(indices_other_reduces);
 
-                    let result_index = bitwise_bin_vec_to_int(&result_indices);
+                    let result_index = Self::ravel_index(&result_indices, &result_shape);
                     result.data[result_index] += value_self.clone() * value_other.clone();
                 }
             }
         }
         Ok(result)
     }
-
-    // Helper function to calculate strides for a given shape
-    fn calculate_strides(shape: &[usize]) -> Vec<usize> {
-        let mut strides = vec![1; shape.len()];
-        for i in (0..shape.len() - 1).rev() {
-            strides[i] = strides[i + 1] * shape[i + 1];
-        }
-        strides
-    }
-
     // Helper function to unravel a flat index to a multidimensional index
-    fn unravel_index(index: usize, shape: &[usize], strides: &[usize]) -> Vec<usize> {
-        let mut unraveled = vec![0; shape.len()];
-        let mut remainder = index;
-        for (i, stride) in strides.iter().enumerate() {
-            unraveled[i] = remainder / stride;
-            remainder %= stride;
+    fn unravel_index(index: usize, shape: &[usize]) -> Vec<usize> {
+        let mut idx = index;
+        let mut indices = vec![0; shape.len()];
+        for i in (0..shape.len()).rev() {
+            indices[i] = idx % shape[i];
+            idx /= shape[i];
         }
-        unraveled
+        indices
     }
 
     // Helper function to ravel a multidimensional index to a flat index
-    fn ravel_index(index: &[usize], strides: &[usize]) -> usize {
-        index.iter().zip(strides).map(|(i, s)| i * s).sum()
+    fn ravel_index(indices: &[usize], shape: &[usize]) -> usize {
+        let mut index = 0;
+        let mut factor = 1;
+        for (i, &dim) in shape.iter().enumerate().rev() {
+            index += indices[i] * factor;
+            factor *= dim;
+        }
+        index
     }
 
-    pub fn transpose(&self, axes: Vec<usize>) -> Self {
-        let axes = if axes.is_empty() {
-            (0..self.shape.len()).rev().collect()
+    pub fn transpose(&self, axes: &[usize]) -> Result<Tensor<T>, &str> {
+        let new_shape: Vec<usize>;
+        let new_axes: Vec<usize>;
+    
+        if axes.is_empty() {
+            // If axes are not provided, reverse the shape and create corresponding axes
+            new_shape = self.shape.iter().rev().cloned().collect();
+            new_axes = (0..self.shape.len()).rev().collect::<Vec<_>>();
         } else {
-            axes
-        };
-
-        let new_shape = axes.iter().map(|&i| self.shape[i]).collect::<Vec<_>>();
-        let old_strides = Self::calculate_strides(&self.shape);
-        let new_strides = Self::calculate_strides(&new_shape);
-
+            if axes.len() != self.shape.len() {
+                return Err("Axes dimensions must match tensor dimensions");
+            }
+            new_shape = axes.iter().map(|&axis| self.shape[axis]).collect();
+            new_axes = axes.to_vec();
+        }
+ 
         let mut new_data = vec![T::zero(); self.data.len()];
 
-        for (i, cell) in self.data.iter().enumerate() {
-            let old_index = Self::unravel_index(i, &self.shape, &old_strides);
-            let new_index = axes.iter().map(|&axis| old_index[axis]).collect::<Vec<_>>();
-            let new_pos = Self::ravel_index(&new_index, &new_strides);
-            new_data[new_pos] = cell.clone();
+        let mut old_indices = vec![0; self.shape.len()];
+        let mut new_indices = vec![0; self.shape.len()];
+        let mut old_strides = vec![1; self.shape.len()];
+        let mut new_strides = vec![1; self.shape.len()];
+
+        for i in (1..self.shape.len()).rev() {
+            old_strides[i - 1] = old_strides[i] * self.shape[i];
         }
-        Tensor {
+
+        for i in (1..new_shape.len()).rev() {
+            new_strides[i - 1] = new_strides[i] * new_shape[i];
+        }
+
+        for old_idx in 0..self.data.len() {
+            let mut temp = old_idx;
+            for i in 0..self.shape.len() {
+                old_indices[i] = temp / old_strides[i];
+                temp %= old_strides[i];
+            }
+
+            for i in 0..self.shape.len() {
+                new_indices[i] = old_indices[new_axes[i]];
+            }
+
+            let mut new_idx = 0;
+            for i in 0..self.shape.len() {
+                new_idx += new_indices[i] * new_strides[i];
+            }
+
+            new_data[new_idx] = self.data[old_idx].clone();
+        }
+
+        Ok(Tensor {
             data: new_data,
-            shape: new_shape
-        }
+            shape: new_shape,
+        })
     }
 
     pub fn moveaxis(&self, source: &[i32], dest: &[i32]) -> Result<Tensor<T>, &str> {
@@ -243,32 +270,38 @@ where
 
         let ndim = self.shape.len();
 
-        let convert_index = |idx: isize| -> usize {
+        let convert_index = |idx: i32| -> usize {
             if idx < 0 {
-                (ndim as isize + idx) as usize
+                (ndim as isize + idx as isize) as usize
             } else {
                 idx as usize
             }
         };
+
         let source: Vec<usize> = source.iter()
-            .map(|&x| convert_index(x.try_into().unwrap()))
+            .map(|&x| convert_index(x))
             .collect();
         let dest: Vec<usize> = dest.iter()
-            .map(|&x| convert_index(x.try_into().unwrap()))
+            .map(|&x| convert_index(x))
             .collect();
         
-        let mut order: Vec<usize> = (0..ndim).filter(|&n| !source.contains(&(n as usize))).collect();
+        let mut order: Vec<usize> = (0..ndim).collect();
 
-        let mut pairs: Vec<_> = dest.iter().cloned().zip(source.iter().cloned()).collect(); // Create pairs of (destination, source) elements
-        pairs.sort_by_key(|&(dest, _)| dest);
-
-        for (dest, src) in pairs {
-            order.insert(dest as usize, src as usize);
+        // Remove the source indices from the order, starting from the highest index to avoid reindexing issues
+        let mut temp_source = source.clone();
+        temp_source.sort_by(|a, b| b.cmp(a));
+        for &src in &temp_source {
+            order.remove(src);
         }
 
-        let result = self.transpose(order);
-        
-        Ok(result)
+        // Insert the source indices at the destination positions, starting from the lowest index
+        let mut temp_dest = dest.clone();
+        let mut temp_pairs: Vec<(usize, usize)> = temp_dest.iter().cloned().zip(source.iter().cloned()).collect();
+        temp_pairs.sort_by(|a, b| a.0.cmp(&b.0));
+        for &(dst, src) in &temp_pairs {
+            order.insert(dst, src);
+        }
+        self.transpose(&order)
     }
 }
 

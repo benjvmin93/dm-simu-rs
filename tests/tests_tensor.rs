@@ -84,7 +84,7 @@ mod tests_tensor {
     }
 
     #[test]
-    fn test_tensordot_basic_1() {
+    fn test_tensordot_2D_1() {
         // Tensor A (shape: [2, 2])
         let a_data = vec![
             Complex::new(1., 0.), Complex::new(0., 0.),
@@ -115,7 +115,7 @@ mod tests_tensor {
     }
 
     #[test]
-    fn test_tensordot_basic_2() {
+    fn test_tensordot_2D_2() {
         // Tensor A (shape: [2, 2])
         let a_data = vec![
             Complex::new(1., 0.), Complex::new(2., 0.),
@@ -146,7 +146,7 @@ mod tests_tensor {
     }
 
     #[test]
-    fn test_tensordot_complex() {
+    fn test_tensordot_different_shapes() {
         // Tensor A (shape: [2, 2])
         let a_data = vec![
             Complex::new(1., 0.), Complex::new(2., 0.),
@@ -191,6 +191,66 @@ mod tests_tensor {
     }
 
     #[test]
+    fn test_tensordot_3Dx2D_1() {
+        let t_a = Tensor::from_vec(
+            vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+            vec![2, 3, 2]
+        );
+        let t_b = Tensor::from_vec(
+            vec![13, 14, 15, 16, 17, 18], 
+            vec![3, 2]
+        );
+        let res = t_a.tensordot(&t_b, (&[1, 2], &[0, 1])).unwrap();
+        assert_eq!(res.shape, vec![2]);
+        assert_eq!(res.data, vec![343, 901]);
+    }
+
+    #[test]
+    fn test_tensordot_3Dx2D_2() {
+        let t_a = Tensor::from_vec(
+            vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+            vec![2, 3, 2]
+        );
+        let t_b = Tensor::from_vec(
+            vec![13, 14, 15, 16, 17, 18], 
+            vec![3, 2]
+        );
+        let res = t_a.tensordot(&t_b, (&[2, 1], &[1, 0])).unwrap();
+        assert_eq!(res.shape, vec![2]);
+        assert_eq!(res.data, vec![343, 901]);
+    }
+
+    #[test]
+    fn test_tensordot_2Dx3D_1() {
+        let t_a = Tensor::from_vec(
+            vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+            vec![2, 3, 2]
+        );
+        let t_b = Tensor::from_vec(
+            vec![13, 14, 15, 16, 17, 18],
+            vec![3, 2]
+        );
+        let res = t_b.tensordot(&t_a, (&[0, 1], &[1, 2])).unwrap();
+        assert_eq!(res.shape, vec![2]);
+        assert_eq!(res.data, vec![343, 901]);
+    }
+
+    #[test]
+    fn test_tensordot_2Dx3D_2() {
+        let t_a = Tensor::from_vec(
+            vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+            vec![2, 3, 2]
+        );
+        let t_b = Tensor::from_vec(
+            vec![13, 14, 15, 16, 17, 18], 
+            vec![3, 2]
+        );
+        let res = t_b.tensordot(&t_a, (&[1, 0], &[2, 1])).unwrap();
+        assert_eq!(res.shape, vec![2]);
+        assert_eq!(res.data, vec![343, 901]);
+    }
+
+    #[test]
     fn test_transpose_single_axis() {
         // Create a 1D tensor
         let tensor = Tensor::from_vec(
@@ -201,7 +261,7 @@ mod tests_tensor {
         );
 
         // Transpose axes [0] (identity transpose for 1D tensor)
-        let transposed = tensor.transpose(vec![0]);
+        let transposed = tensor.transpose(&[0]).unwrap();
 
         // Check the new shape (should be the same as the original)
         assert_eq!(transposed.shape, vec![3]);
@@ -222,7 +282,7 @@ mod tests_tensor {
         );
 
         // Transpose axes [0, 1] (identity transpose)
-        let transposed = tensor.transpose(vec![0, 1]);
+        let transposed = tensor.transpose(&[0, 1]).unwrap();
 
         // Check the new shape (should be the same as the original)
         assert_eq!(transposed.shape, vec![2, 3]);
@@ -243,7 +303,7 @@ mod tests_tensor {
         );
 
         // Transpose axes [1, 0]
-        let transposed = tensor.transpose(vec![1, 0]);
+        let transposed = tensor.transpose(&[1, 0]).unwrap();
 
         // Check the new shape
         assert_eq!(transposed.shape, vec![3, 2]);
@@ -265,7 +325,7 @@ mod tests_tensor {
         );
 
         // Transpose axes [2, 0, 1]
-        let transposed = tensor.transpose(vec![2, 0, 1]);
+        let transposed = tensor.transpose(&[2, 0, 1]).unwrap();
 
         // Check the new shape
         assert_eq!(transposed.shape, vec![4, 2, 3]);
@@ -297,7 +357,7 @@ mod tests_tensor {
         );
 
         // Transpose 
-        let transposed = tensor.transpose(vec![]);
+        let transposed = tensor.transpose(&[]).unwrap();
 
         // Check the new shape
         assert_eq!(transposed.shape, vec![2, 2, 2, 2]);
@@ -317,6 +377,38 @@ mod tests_tensor {
             Complex::new(7.0, 0.0), Complex::new(15.0, 0.0)
         ];
         assert_eq!(transposed.data, expected_data);
+    }
+
+    #[test]
+    fn test_transpose_empty_axes() {
+        let tensor = Tensor::from_vec(
+            (0..6).collect(),
+            vec![2, 3]
+        );
+    
+        let transposed_tensor = tensor.transpose(&[]).unwrap();
+        assert_eq!(transposed_tensor.shape, vec![3, 2]);
+    
+        let expected_data = vec![
+            0, 3, 1, 4, 2, 5
+        ];
+        assert_eq!(transposed_tensor.data, expected_data);
+    }
+
+    #[test]
+    fn test_transpose_3d_empty_axes() {
+        let tensor = Tensor::from_vec(
+            (0..24).collect(),
+            vec![2, 3, 4]
+        );
+
+        let transposed_tensor = tensor.transpose(&[]).unwrap();
+        assert_eq!(transposed_tensor.shape, vec![4, 3, 2]);
+
+        let expected_data = vec![
+            0, 12, 4, 16, 8, 20, 1, 13, 5, 17, 9, 21, 2, 14, 6, 18, 10, 22, 3, 15, 7, 19, 11, 23
+        ];
+        assert_eq!(transposed_tensor.data, expected_data);
     }
 
     #[test]
@@ -343,7 +435,7 @@ mod tests_tensor {
     fn test_moveaxis_transpose() {
         // Create a 2x2 tensor
         let tensor = Tensor::from_vec(
-            (0..4).map(|x| Complex::new(x as f64, 0.)).collect::<Vec<Complex<f64>>>(),
+            (0..4).collect(),
             vec![2, 2]
         );
 
@@ -352,8 +444,7 @@ mod tests_tensor {
         assert_eq!(new_tensor.shape, vec![2, 2]);
 
         let expected_data = vec![
-            Complex::new(0., 0.), Complex::new(2., 0.),
-            Complex::new(1., 0.), Complex::new(3., 0.)
+            0, 2, 1, 3
         ];
         assert_eq!(new_tensor.data, expected_data);
     }
