@@ -1,8 +1,7 @@
 use core::fmt;
 use num_traits::{Zero, One};
 use std::ops::{Add, Mul, AddAssign};
-
-use crate::tools::{bitwise_bin_vec_to_int, bitwise_int_to_bin_vec};
+use rayon::prelude::*;
 
 #[derive(Debug, Clone)]
 pub struct Tensor<T> {
@@ -12,7 +11,7 @@ pub struct Tensor<T> {
 
 impl<T> Tensor<T>
 where
-    T: Zero + Clone + Mul<Output = T> + Add<Output = T> + AddAssign,
+    T: Zero + Clone + Mul<Output = T> + Add<Output = T> + AddAssign + Sized
 {
     // Initialize a new tensor with given shape
     pub fn new(shape: &[usize]) -> Self {
@@ -55,8 +54,7 @@ where
             }
             write!(f, "]")
         }
-    }
-    
+    }    
 
     // Get index with the given tensor indices
     pub fn get_index(&self, indices: &[u8]) -> usize {
@@ -83,27 +81,38 @@ where
     }
 
     // Perform tensor addition
-    pub fn add(&self, other: &Tensor<T>) -> Self {
+    pub fn add(&self, other: &Tensor<T>) -> Self
+    where 
+        T: Send + Sync + Clone + Zero + Mul<Output = T> + std::ops::AddAssign,
+    {
         assert_eq!(self.shape, other.shape);
         let mut result = Self::new(&self.shape);
-        for (i, self_data) in self.data.iter().enumerate() {
-            result.data[i] = self_data.clone() + other.data[i].clone();
-        }
+        result.data = self.data.par_iter()
+            .zip(other.data.par_iter())
+            .map(|(a, b)| a.clone() + b.clone())
+            .collect();
         result
     }
 
     // Perform tensor multiplication (element-wise)
-    pub fn multiply(&self, other: &Tensor<T>) -> Self {
+    pub fn multiply(&self, other: &Tensor<T>) -> Self
+    where 
+        T: Send + Sync + Clone + Zero + Mul<Output = T> + std::ops::AddAssign,
+    {
         assert_eq!(self.shape, other.shape);
         let mut result = Self::new(&self.shape);
-        for (i, self_data) in self.data.iter().enumerate() {
-            result.data[i] = self_data.clone() * other.data[i].clone();
-        }
+        result.data = self.data.par_iter()
+            .zip(other.data.par_iter())
+            .map(|(a, b)| a.clone() * b.clone())
+            .collect();
         result
     }
 
     // Method to compute the tensor product of two tensors
-    pub fn tensor_product(&self, other: &Tensor<T>) -> Tensor<T> {
+    pub fn tensor_product(&self, other: &Tensor<T>) -> Tensor<T>
+    where
+        T: Clone + Send + Sync + Sized + std::ops::Mul<Output = T>,
+    {
         // Check if tensors are compatible for tensor product
         assert_eq!(self.data.len(), self.shape.iter().product());
         assert_eq!(other.data.len(), other.shape.iter().product());
@@ -115,8 +124,10 @@ where
         // Calculate the data of the resulting tensor
         let new_data: Vec<T> = self
             .data
-            .iter()
-            .flat_map(|x| other.data.iter().map(move |y| x.clone() * y.clone()))
+            .par_iter()
+            .flat_map(|x| other.data
+                .par_iter()
+                .map(move |y| x.clone() * y.clone()))
             .collect();
 
         Tensor {
@@ -125,7 +136,9 @@ where
         }
     }
 
-    pub fn tensordot(&self, other: &Tensor<T>, axes: (&[usize], &[usize])) -> Result<Tensor<T>, &str> {
+    pub fn tensordot(&self, other: &Tensor<T>, axes: (&[usize], &[usize])) -> Result<Tensor<T>, &str>
+    where T: Send + Sync + Clone + Zero + Mul<Output = T> + std::ops::AddAssign,
+    {
         if axes.0.len() != axes.1.len() {
             return Err("Axes dimensions must match");
         }
@@ -154,37 +167,94 @@ where
         new_shape_self.extend(new_shape_other);
         
         let result_shape = new_shape_self;
-        let result_data = vec![T::zero(); result_shape.iter().product()];
-        let mut result = Tensor::from_vec(result_data, result_shape.clone());
+        let result_size = result_shape.iter().product();
+        let mut result_data = vec![T::zero(); result_size];
 
-        for (i, value_self) in self.data.iter().enumerate() {
-            let indices_self = Self::unravel_index(i, &self.shape);
-            let indices_common: Vec<_> = axes.0.iter().map(|&axis| indices_self[axis]).collect();
-            let indices_self_reduced: Vec<_> = indices_self.iter().enumerate()
-                .filter(|&(idx, _)| !axes.0.contains(&idx))
-                .map(|(_, &val)| val)
-                .collect();
+        let common_shape: Vec<_> = axes.0.iter().map(|&axis| self.shape[axis]).collect();
 
-            for (j, value_other) in other.data.iter().enumerate() {
-                let indices_other = Self::unravel_index(j, &other.shape);
-                let indices_common_other: Vec<_> = axes.1.iter().map(|&axis| indices_other[axis]).collect();
+        result_data.par_iter_mut().enumerate().for_each(|(result_i, result_value)| {
+            let result_indices = Self::unravel_index(result_i, &result_shape);
 
-                if indices_common == indices_common_other {
-                    let indices_other_reduces: Vec<_> = indices_other.iter().enumerate()
-                        .filter(|&(idx, _)| !axes.1.contains(&idx))
-                        .map(|(_, &val)| val)
-                        .collect();
+            let (indices_self_reduced, indices_other_reduced): (Vec<usize>, Vec<usize>) = {
+                let mut self_indices = Vec::new();
+                let mut other_indices = Vec::new();
+                let mut axis_iter = result_indices.iter();
 
-                    let mut result_indices = indices_self_reduced.clone();
-                    result_indices.extend(indices_other_reduces);
+                for i in 0..self.shape.len() {
+                    if !axes.0.contains(&i) {
+                        self_indices.push(*axis_iter.next().unwrap());
+                    }
+                }
 
-                    let result_index = Self::ravel_index(&result_indices, &result_shape);
-                    result.data[result_index] += value_self.clone() * value_other.clone();
+                for i in 0..other.shape.len() {
+                    if !axes.1.contains(&i) {
+                        other_indices.push(*axis_iter.next().unwrap());
+                    }
+                }
+
+                (self_indices, other_indices)
+            };
+
+            let mut temp_sum = T::zero();
+            let mut common_indices = vec![0; common_shape.len()];
+            loop {
+                let self_full_indices = {
+                    let mut indices = vec![0; self.shape.len()];
+                    let mut self_reduced_iter = indices_self_reduced.iter();
+                    for (i, index) in indices.iter_mut().enumerate() {
+                        if let Some(pos) = axes.0.iter().position(|&a| a == i) {
+                            *index = common_indices[pos];
+                        } else {
+                            *index = *self_reduced_iter.next().unwrap();
+                        }
+                    }
+                    indices
+                };
+                
+                let other_full_indices: Vec<_> = {
+                    let mut indices = vec![0; other.shape.len()];
+                    let mut other_reduced_iter = indices_other_reduced.iter();
+                    for (i, index) in indices.iter_mut().enumerate() {
+                        if let Some(pos) = axes.1.iter().position(|&a| a == i) {
+                            *index = common_indices[pos];
+                        } else {
+                            *index = *other_reduced_iter.next().unwrap();
+                        }
+                    }
+                    indices
+                };
+
+                let self_index = Self::ravel_index(&self_full_indices, &self.shape);
+                let other_index = Self::ravel_index(&other_full_indices, &other.shape);
+                
+                temp_sum += self.data[self_index].clone() * other.data[other_index].clone();
+                
+                if !Self::increment_indices(&mut common_indices, &common_shape) {
+                    break;
                 }
             }
-        }
-        Ok(result)
+            *result_value = temp_sum;
+        });
+
+        Ok(Tensor {
+            data:result_data,
+            shape: result_shape
+        })
+
     }
+
+    fn increment_indices(indices: &mut [usize], shape: &[usize]) -> bool {
+        for (i, dim) in shape.iter().enumerate().rev() {
+            if indices[i] + 1 < *dim {
+                indices[i] += 1;
+                return true;
+            } else {
+                indices[i] = 0;
+            }
+        }
+        false
+    }
+
     // Helper function to unravel a flat index to a multidimensional index
     fn unravel_index(index: usize, shape: &[usize]) -> Vec<usize> {
         let mut idx = index;
@@ -311,7 +381,24 @@ where
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "array(")?;
-        self.print(f, &self.shape, &self.data)?;
+        if self.shape.len() == 1 {
+            write!(f, "[")?;
+            for (i, item) in self.data.iter().enumerate() {
+                if i != 0 {
+                    write!(f, ", ")?;
+                }
+                write!(f, "{:?}", item)?;
+            }
+            write!(f, "]");
+        } else {
+            let chunk_size: usize = self.shape[1..].iter().product();
+            for (i, _chunk) in self.data.chunks(chunk_size).enumerate() {
+                if i != 0 {
+                    write!(f, ", ")?;
+                }
+            }
+            write!(f, "]");
+        }
         write!(f, ")")
     }
 }
