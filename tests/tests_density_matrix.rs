@@ -15,7 +15,7 @@ mod tests_dm {
             Complex::new(1., 0.), Complex::new(0., 0.),
             Complex::new(0., 0.), Complex::new(0., 0.)
         ];
-        assert_eq!(rho.data.data, expected_data);
+        assert_eq!(rho.tensor.data, expected_data);
         assert_eq!(rho.nqubits, 1);
         assert_eq!(rho.size, 2);
     }
@@ -26,7 +26,7 @@ mod tests_dm {
             Complex::new(0., 0.), Complex::new(0., 0.),
             Complex::new(0., 0.), Complex::new(1., 0.)
         ];
-        assert_eq!(rho.data.data, expected_data);
+        assert_eq!(rho.tensor.data, expected_data);
         assert_eq!(rho.nqubits, 1);
         assert_eq!(rho.size, 2);
     }
@@ -39,7 +39,7 @@ mod tests_dm {
             Complex::new(0., 0.), Complex::new(0., 0.), Complex::new(0., 0.), Complex::new(0., 0.),
             Complex::new(0., 0.), Complex::new(0., 0.), Complex::new(0., 0.), Complex::new(0., 0.)
         ];
-        assert_eq!(rho.data.data, expected_data);
+        assert_eq!(rho.tensor.data, expected_data);
         assert_eq!(rho.nqubits, 2);
         assert_eq!(rho.size, 4);
     }
@@ -52,7 +52,7 @@ mod tests_dm {
             Complex::new(0., 0.), Complex::new(0., 0.), Complex::new(0., 0.), Complex::new(0., 0.),
             Complex::new(0., 0.), Complex::new(0., 0.), Complex::new(0., 0.), Complex::new(0., 0.)
         ];
-        assert_eq!(rho.data.data, expected_data);
+        assert_eq!(rho.tensor.data, expected_data);
         assert_eq!(rho.nqubits, 2);
         assert_eq!(rho.size, 4);
     }
@@ -65,7 +65,7 @@ mod tests_dm {
             Complex::new(0., 0.), Complex::new(0., 0.), Complex::new(1., 0.), Complex::new(0., 0.),
             Complex::new(0., 0.), Complex::new(0., 0.), Complex::new(0., 0.), Complex::new(0., 0.)
         ];
-        assert_eq!(rho.data.data, expected_data);
+        assert_eq!(rho.tensor.data, expected_data);
         assert_eq!(rho.nqubits, 2);
         assert_eq!(rho.size, 4);
     }
@@ -78,7 +78,7 @@ mod tests_dm {
             Complex::new(0., 0.), Complex::new(0., 0.), Complex::new(0., 0.), Complex::new(0., 0.),
             Complex::new(0., 0.), Complex::new(0., 0.), Complex::new(0., 0.), Complex::new(1., 0.)
         ];
-        assert_eq!(rho.data.data, expected_data);
+        assert_eq!(rho.tensor.data, expected_data);
         assert_eq!(rho.nqubits, 2);
         assert_eq!(rho.size, 4);
     }
@@ -89,7 +89,7 @@ mod tests_dm {
         rho.evolve_single(&Operator::one_qubit(OneQubitOp::I), 0);
 
         let expected_data = &[Complex::new(1., 0.), Complex::new(0., 0.), Complex::new(0., 0.), Complex::new(0., 0.)];
-        assert_eq!(rho.data.data, expected_data);
+        assert_eq!(rho.tensor.data, expected_data);
     }
     #[test]
     fn test_one_qubit_evolve_single_h() {
@@ -99,7 +99,7 @@ mod tests_dm {
             vec![Complex::new(0.5, 0.), Complex::new(0.5, 0.), Complex::new(0.5, 0.), Complex::new(0.5, 0.)],
             vec![2, 2]
         );
-        assert_eq!(rho.equals(DensityMatrix { data: expected_data, size: 2, nqubits: 1 }, TOLERANCE), true);
+        assert_eq!(rho.equals(DensityMatrix { tensor: expected_data, size: 2, nqubits: 1 }, TOLERANCE), true);
     }
     #[test]
     fn test_one_qubit_evolve_single_x() {
@@ -109,7 +109,7 @@ mod tests_dm {
             vec![Complex::new(0., 0.), Complex::new(0., 0.), Complex::new(0., 0.), Complex::new(1., 0.)],
             vec![2, 2]
         );
-        assert_eq!(rho.equals(DensityMatrix { data: expected_data, size: 2, nqubits: 1 }, TOLERANCE), true);
+        assert_eq!(rho.equals(DensityMatrix { tensor: expected_data, size: 2, nqubits: 1 }, TOLERANCE), true);
     }
     #[test]
     fn test_one_qubit_evolve_single_y() {
@@ -119,7 +119,7 @@ mod tests_dm {
             vec![Complex::new(0., 0.), Complex::new(0., 0.), Complex::new(0., 0.), Complex::new(1., 0.)],
             vec![2, 2]
         );
-        assert_eq!(rho.equals(DensityMatrix { data: expected_data, size: 2, nqubits: 1 }, TOLERANCE), true);
+        assert_eq!(rho.equals(DensityMatrix { tensor: expected_data, size: 2, nqubits: 1 }, TOLERANCE), true);
     }
     #[test]
     fn test_one_qubit_evolve_single_z() {
@@ -129,7 +129,7 @@ mod tests_dm {
             vec![Complex::new(1., 0.), Complex::new(0., 0.), Complex::new(0., 0.), Complex::new(0., 0.)],
             vec![2, 2]
         );
-        assert_eq!(rho.equals(DensityMatrix { data: expected_data, size: 2, nqubits: 1 }, TOLERANCE), true);
+        assert_eq!(rho.equals(DensityMatrix { tensor: expected_data, size: 2, nqubits: 1 }, TOLERANCE), true);
     }
     #[test]
     fn test_two_qubits_evolve_single_i() {
@@ -144,7 +144,7 @@ mod tests_dm {
             ],
             vec![2, 2, 2, 2]
         );
-        assert_eq!(rho.equals(DensityMatrix { data: expected_data, size: 2, nqubits: 1 }, TOLERANCE), true);
+        assert_eq!(rho.equals(DensityMatrix { tensor: expected_data, size: 2, nqubits: 1 }, TOLERANCE), true);
     }
     #[test]
     fn test_two_qubits_evolve_single_h() {
@@ -159,7 +159,7 @@ mod tests_dm {
             ],
             vec![2, 2, 2, 2]
         );
-        assert_eq!(rho.equals(DensityMatrix { data: expected_data, size: 2, nqubits: 1 }, TOLERANCE), true);
+        assert_eq!(rho.equals(DensityMatrix { tensor: expected_data, size: 2, nqubits: 1 }, TOLERANCE), true);
     }
     #[test]
     fn test_two_qubits_evolve_single_x() {
@@ -174,7 +174,7 @@ mod tests_dm {
             ],
             vec![2, 2, 2, 2]
         );
-        assert_eq!(rho.equals(DensityMatrix { data: expected_data, size: 2, nqubits: 1 }, TOLERANCE), true);
+        assert_eq!(rho.equals(DensityMatrix { tensor: expected_data, size: 2, nqubits: 1 }, TOLERANCE), true);
     }
     #[test]
     fn test_two_qubits_evolve_single_y() {
@@ -189,7 +189,7 @@ mod tests_dm {
             ],
             vec![2, 2, 2, 2]
         );
-        assert_eq!(rho.equals(DensityMatrix { data: expected_data, size: 2, nqubits: 1 }, TOLERANCE), true);
+        assert_eq!(rho.equals(DensityMatrix { tensor: expected_data, size: 2, nqubits: 1 }, TOLERANCE), true);
     }
     #[test]
     fn test_two_qubits_evolve_single_z() {
@@ -204,7 +204,7 @@ mod tests_dm {
             ],
             vec![2, 2, 2, 2]
         );
-        assert_eq!(rho.equals(DensityMatrix { data: expected_data, size: 2, nqubits: 1 }, TOLERANCE), true);
+        assert_eq!(rho.equals(DensityMatrix { tensor: expected_data, size: 2, nqubits: 1 }, TOLERANCE), true);
     }
     #[test]
     fn test_evolve_cx_ket00_1() {
@@ -216,7 +216,7 @@ mod tests_dm {
             Complex::new(0., 0.), Complex::new(0., 0.), Complex::new(0., 0.), Complex::new(0., 0.),
             Complex::new(0., 0.), Complex::new(0., 0.), Complex::new(0., 0.), Complex::new(0., 0.)
         ];
-        assert_eq!(expected_data, rho.data.data);
+        assert_eq!(expected_data, rho.tensor.data);
     }
     #[test]
     fn test_evolve_cx_ket00_2() {
@@ -228,7 +228,7 @@ mod tests_dm {
             Complex::new(0., 0.), Complex::new(0., 0.), Complex::new(0., 0.), Complex::new(0., 0.),
             Complex::new(0., 0.), Complex::new(0., 0.), Complex::new(0., 0.), Complex::new(0., 0.)
         ];
-        assert_eq!(expected_data, rho.data.data);
+        assert_eq!(expected_data, rho.tensor.data);
     }
     #[test]
     fn test_evolve_cx_ket01() {
@@ -240,7 +240,7 @@ mod tests_dm {
             Complex::new(0., 0.), Complex::new(0., 0.), Complex::new(0., 0.), Complex::new(0., 0.),
             Complex::new(0., 0.), Complex::new(0., 0.), Complex::new(0., 0.), Complex::new(1., 0.)
         ];
-        assert_eq!(expected_data, rho.data.data);
+        assert_eq!(expected_data, rho.tensor.data);
     }
     #[test]
     fn test_evolve_cx_ket10() {
@@ -252,7 +252,7 @@ mod tests_dm {
             Complex::new(0., 0.), Complex::new(0., 0.), Complex::new(0., 0.), Complex::new(0., 0.),
             Complex::new(0., 0.), Complex::new(0., 0.), Complex::new(0., 0.), Complex::new(1., 0.)
         ];
-        assert_eq!(expected_data, rho.data.data);
+        assert_eq!(expected_data, rho.tensor.data);
     }
     #[test]
     fn test_evolve_cx_ket11() {
@@ -264,7 +264,7 @@ mod tests_dm {
             Complex::new(0., 0.), Complex::new(0., 0.), Complex::new(1., 0.), Complex::new(0., 0.),
             Complex::new(0., 0.), Complex::new(0., 0.), Complex::new(0., 0.), Complex::new(0., 0.)
         ];
-        assert_eq!(expected_data, rho.data.data);
+        assert_eq!(expected_data, rho.tensor.data);
     }
     #[test]
     fn test_evolve_cz_ket00() {
@@ -276,7 +276,7 @@ mod tests_dm {
             Complex::new(0., 0.), Complex::new(0., 0.), Complex::new(0., 0.), Complex::new(0., 0.),
             Complex::new(0., 0.), Complex::new(0., 0.), Complex::new(0., 0.), Complex::new(0., 0.)
         ];
-        assert_eq!(expected_data, rho.data.data);
+        assert_eq!(expected_data, rho.tensor.data);
     }
     
     #[test]
@@ -289,7 +289,7 @@ mod tests_dm {
             Complex::new(0., 0.), Complex::new(0., 0.), Complex::new(0., 0.), Complex::new(0., 0.),
             Complex::new(0., 0.), Complex::new(0., 0.), Complex::new(0., 0.), Complex::new(0., 0.)
         ];
-        assert_eq!(expected_data, rho.data.data);
+        assert_eq!(expected_data, rho.tensor.data);
     }
     
     #[test]
@@ -310,7 +310,7 @@ mod tests_dm {
             Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO,
             Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO,
         ];
-        assert_eq!(expected_data, rho.data.data);
+        assert_eq!(expected_data, rho.tensor.data);
     }
     #[test]
     fn test_evolve_swap_ket001_2() {
@@ -330,7 +330,7 @@ mod tests_dm {
             Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO,
             Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO,
         ];
-        assert_eq!(expected_data, rho.data.data);
+        assert_eq!(expected_data, rho.tensor.data);
     }
     #[test]
     fn test_evolve_swap_ket100_1() {
@@ -350,7 +350,7 @@ mod tests_dm {
             Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO,
             Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO,
         ];
-        assert_eq!(expected_data, rho.data.data);
+        assert_eq!(expected_data, rho.tensor.data);
     }
     #[test]
     fn test_evolve_swap_ket100_2() {
@@ -370,7 +370,7 @@ mod tests_dm {
             Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO,
             Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO,
         ];
-        assert_eq!(expected_data, rho.data.data);
+        assert_eq!(expected_data, rho.tensor.data);
     }
     #[test]
     fn test_evolve_swap_ket111_1() {
@@ -390,7 +390,7 @@ mod tests_dm {
             Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO,
             Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ONE,
         ];
-        assert_eq!(expected_data, rho.data.data);
+        assert_eq!(expected_data, rho.tensor.data);
     }
     #[test]
     fn test_evolve_swap_ket111_2() {
@@ -410,7 +410,7 @@ mod tests_dm {
             Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO,
             Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ONE,
         ];
-        assert_eq!(expected_data, rho.data.data);
+        assert_eq!(expected_data, rho.tensor.data);
     }
     #[test]
     fn test_evolve_swap_ket111_3() {
@@ -430,7 +430,7 @@ mod tests_dm {
             Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO,
             Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ONE,
         ];
-        assert_eq!(expected_data, rho.data.data);
+        assert_eq!(expected_data, rho.tensor.data);
     }
     #[test]
     #[should_panic]

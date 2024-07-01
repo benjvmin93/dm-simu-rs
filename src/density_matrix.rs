@@ -16,7 +16,7 @@ pub enum State {
 
 // 1D representation of a size * size density matrix.
 pub struct DensityMatrix {
-    pub data: Tensor<Complex<f64>>,
+    pub tensor: Tensor<Complex<f64>>,
     pub size: usize,    // 2 ** nqubits
     pub nqubits: usize
 }
@@ -35,21 +35,21 @@ impl DensityMatrix {
         match initial_state {
             State::PLUS => {  // Set density matrix to |+><+| \otimes n
                 let mut dm =  Self {
-                    data: Tensor::from_vec(vec![Complex::ONE; size * size], vec![2; shape]),
+                    tensor: Tensor::from_vec(vec![Complex::ONE; size * size], vec![2; shape]),
                     size,
                     nqubits
                 };
-                dm.data.data = dm.data.data.iter().map(|n| *n / Complex::new(size as f64, 0.)).collect();
+                dm.tensor.data = dm.tensor.data.iter().map(|n| *n / Complex::new(size as f64, 0.)).collect();
                 dm
             }
             State::ZERO => {  // Set density matrix to |0><0| \otimes n
                 let mut dm = Self {
-                    data: Tensor::from_vec(vec![Complex::ZERO; size * size], vec![2; shape]),
+                    tensor: Tensor::from_vec(vec![Complex::ZERO; size * size], vec![2; shape]),
                     size,
                     nqubits
                 };
                 let indices = bitwise_int_to_bin_vec(0, shape);
-                dm.data.set(&indices, Complex::ONE);
+                dm.tensor.set(&indices, Complex::ONE);
                 dm
             }
         }
@@ -70,7 +70,7 @@ impl DensityMatrix {
             }
         }
         Ok(DensityMatrix {
-            data: Tensor::from_vec(data, vec![2; 2 * nqubits]),
+            tensor: Tensor::from_vec(data, vec![2; 2 * nqubits]),
             size,
             nqubits
         })
@@ -82,7 +82,7 @@ impl DensityMatrix {
         } else {
             let nqubits = tensor.shape.len() / 2;
             Ok(DensityMatrix {
-                data: tensor,
+                tensor: tensor,
                 size: 2_i32.pow(nqubits as u32) as usize,
                 nqubits
             })
@@ -95,7 +95,7 @@ impl DensityMatrix {
             write!(f, "[")?;
             for j in 0..self.size {
                 let indices = bitwise_int_to_bin_vec(i * self.size + j, 2 * self.nqubits);
-                write!(f, "{}", self.data.get(&indices))?;
+                write!(f, "{}", self.tensor.get(&indices))?;
                 if j != self.size - 1 {
                     write!(f, ", ")?;
                 }
@@ -111,14 +111,14 @@ impl DensityMatrix {
 
     // Access element at row i and column j
     pub fn get(&self, i: u8, j: u8) -> Complex<f64> {
-        self.data.get(&[i, j])
+        self.tensor.get(&[i, j])
     }
 
     // Set element at row i and column j
     pub fn set(&mut self, i: u8, j: u8, value: Complex<f64>) {
         let size = self.size as u8;
         let indices = bitwise_int_to_bin_vec((i * size + j) as usize, 2 * self.nqubits);
-        self.data.set(&indices, value);
+        self.tensor.set(&indices, value);
     }
 
     pub fn expectation_single(&self, op: OneQubitOp, index: usize) -> Result<Complex<f64>, &str> {
@@ -127,7 +127,7 @@ impl DensityMatrix {
         }
 
         let op_tensor = Operator::one_qubit(op);
-        let mut result_tensor = self.data.tensordot(&op_tensor.data, (&[1], &[index])).unwrap();
+        let mut result_tensor = self.tensor.tensordot(&op_tensor.tensor, (&[1], &[index])).unwrap();
         result_tensor = result_tensor.moveaxis(&[0], &[index as i32]).unwrap();
         let dm_result = DensityMatrix::from_tensor(result_tensor).unwrap();
         Ok(dm_result.trace())
@@ -138,7 +138,7 @@ impl DensityMatrix {
         let mut trace = Complex::ZERO;
         let mut step = 0;
         for i in 0..self.size {
-            trace += self.data.get(&[i as u8, step]);
+            trace += self.tensor.get(&[i as u8, step]);
             step += 1;
         }
 
@@ -147,7 +147,7 @@ impl DensityMatrix {
 
     pub fn normalize(&mut self) {
         let trace = self.trace();
-        self.data.data = self.data.data.iter()
+        self.tensor.data = self.tensor.data.iter()
             .map(|&c| c / trace)
             .collect::<Vec<_>>();
     }
@@ -160,9 +160,9 @@ impl DensityMatrix {
             return Err(format!("Passed operator is not a one qubit operator."));
         }
 
-        self.data = op.data.tensordot(&self.data, (&[1], &[index])).unwrap();
-        self.data = self.data.tensordot(&Tensor::from_vec(op.transconj().data.data, vec![2, 2]), (&[index + self.nqubits], &[0])).unwrap();
-        self.data = self.data.moveaxis(&[0, ((self.data.shape.len() - 1)).try_into().unwrap()], &[index.try_into().unwrap(), ((index + self.nqubits)).try_into().unwrap()]).unwrap();
+        self.tensor = op.tensor.tensordot(&self.tensor, (&[1], &[index])).unwrap();
+        self.tensor = self.tensor.tensordot(&Tensor::from_vec(op.transconj().tensor.data, vec![2, 2]), (&[index + self.nqubits], &[0])).unwrap();
+        self.tensor = self.tensor.moveaxis(&[0, ((self.tensor.shape.len() - 1)).try_into().unwrap()], &[index.try_into().unwrap(), ((index + self.nqubits)).try_into().unwrap()]).unwrap();
 
         Ok(())
     }
@@ -180,15 +180,15 @@ impl DensityMatrix {
         let nqb_op = op.nqubits;
         let first_axe = (0..indices.len()).map(|i| nqb_op + i).collect::<Vec<usize>>();
         let second_axe = indices;
-        self.data = op.data.tensordot(
-            &self.data, 
+        self.tensor = op.tensor.tensordot(
+            &self.tensor, 
             (&first_axe, &second_axe)).unwrap();
 
         let op_transconj = op.transconj();
         let first_axe = indices.iter().map(|i| i + self.nqubits).collect::<Vec<usize>>();
         let second_axe = (0..indices.len()).collect::<Vec<usize>>();
-        self.data = self.data.tensordot(
-            &op_transconj.data,
+        self.tensor = self.tensor.tensordot(
+            &op_transconj.tensor,
             (&first_axe, &second_axe)).unwrap();
 
         let moveaxis_src_first = (0..indices.len() as i32).collect::<Vec<i32>>();
@@ -199,15 +199,15 @@ impl DensityMatrix {
         let moveaxis_dest_second = indices.iter().rev().map(|&i| i as i32 + self.nqubits as i32).collect();
         let dst = [moveaxis_dest_first, moveaxis_dest_second].concat();
 
-        self.data = self.data.moveaxis(&src, &dst).unwrap();
+        self.tensor = self.tensor.moveaxis(&src, &dst).unwrap();
 
         Ok(())
     }
 
     pub fn equals(&self, other: DensityMatrix, tol: f64) -> bool {
-        if self.data.shape.iter().product::<usize>() == other.data.shape.iter().product::<usize>() {
-            for i in 0..self.data.data.len() {
-                if complex_approx_eq(self.data.data[i], other.data.data[i], tol) == false {
+        if self.tensor.shape.iter().product::<usize>() == other.tensor.shape.iter().product::<usize>() {
+            for i in 0..self.tensor.data.len() {
+                if complex_approx_eq(self.tensor.data[i], other.tensor.data[i], tol) == false {
                     return false;
                 }
             }
@@ -218,7 +218,7 @@ impl DensityMatrix {
     }
 
     pub fn tensor(&mut self, other: &DensityMatrix) {
-        self.data = self.data.tensor_product(&other.data);
+        self.tensor = self.tensor.tensor_product(&other.tensor);
         self.nqubits += other.nqubits;
     }
 
@@ -240,8 +240,8 @@ impl DensityMatrix {
         }
 
         let tensordot_first_axe = (0..qargs.len() * 2).collect::<Vec<usize>>();
-        let rho_res = id_tensor.tensordot(&self.data, (&tensordot_first_axe, &trace_axes)).unwrap();
-        self.data = rho_res;
+        let rho_res = id_tensor.tensordot(&self.tensor, (&tensordot_first_axe, &trace_axes)).unwrap();
+        self.tensor = rho_res;
         self.nqubits = nqubit_after;
         Ok(())
     }
@@ -250,20 +250,20 @@ impl DensityMatrix {
         self.evolve(
             &Operator::two_qubits(TwoQubitsOp::CZ),
             &[edge.0, edge.1]
-        );
+        ).unwrap();
     }
 
     pub fn swap(&mut self, edge: &(usize, usize)) {
         self.evolve(
             &Operator::two_qubits(TwoQubitsOp::SWAP),
             &[edge.0, edge.1]
-        );
+        ).unwrap();
     }
 
     pub fn cnot(&mut self, edge: &(usize, usize)) {
         self.evolve(
             &Operator::two_qubits(TwoQubitsOp::CX),
             &[edge.0, edge.1]
-        );
+        ).unwrap();
     }
 }

@@ -13,8 +13,8 @@ mod tests_operators {
             Complex::new(FRAC_1_SQRT_2, 0.), Complex::new(FRAC_1_SQRT_2, 0.),
             Complex::new(FRAC_1_SQRT_2, 0.), Complex::new(FRAC_1_SQRT_2, 0.)
         ];
-        assert_eq!(h_gate.data.shape, vec![2, 2]);
-        assert_eq!(h_gate.data.data, expected);
+        assert_eq!(h_gate.tensor.shape, vec![2, 2]);
+        assert_eq!(h_gate.tensor.data, expected);
     }
     #[test]
     fn test_operator_x() {
@@ -23,8 +23,8 @@ mod tests_operators {
             Complex::ZERO, Complex::ONE,
             Complex::ONE, Complex::ZERO
         ];
-        assert_eq!(x_gate.data.shape, vec![2, 2]);
-        assert_eq!(x_gate.data.data, expected);
+        assert_eq!(x_gate.tensor.shape, vec![2, 2]);
+        assert_eq!(x_gate.tensor.data, expected);
     }
     #[test]
     fn test_operator_y() {
@@ -33,8 +33,8 @@ mod tests_operators {
             Complex::ZERO, Complex::new(0., -1.),
             Complex::new(0., 1.), Complex::ZERO
         ];
-        assert_eq!(y_gate.data.shape, vec![2, 2]);
-        assert_eq!(y_gate.data.data, expected);
+        assert_eq!(y_gate.tensor.shape, vec![2, 2]);
+        assert_eq!(y_gate.tensor.data, expected);
     }
     #[test]
     fn test_operator_z() {
@@ -43,8 +43,8 @@ mod tests_operators {
             Complex::ONE, Complex::ZERO,
             Complex::ZERO, -Complex::ONE
         ];
-        assert_eq!(z_gate.data.shape, vec![2, 2]);
-        assert_eq!(z_gate.data.data, expected);
+        assert_eq!(z_gate.tensor.shape, vec![2, 2]);
+        assert_eq!(z_gate.tensor.data, expected);
     }
     #[test]
     fn test_operator_cx() {
@@ -55,8 +55,8 @@ mod tests_operators {
             Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ONE,
             Complex::ZERO, Complex::ZERO, Complex::ONE, Complex::ZERO
         ];
-        assert_eq!(cx_gate.data.shape, vec![2, 2, 2, 2]);
-        assert_eq!(cx_gate.data.data, expected);
+        assert_eq!(cx_gate.tensor.shape, vec![2, 2, 2, 2]);
+        assert_eq!(cx_gate.tensor.data, expected);
     }
     #[test]
     fn test_operator_cz() {
@@ -67,8 +67,8 @@ mod tests_operators {
             Complex::ZERO, Complex::ZERO, Complex::ONE, Complex::ZERO,
             Complex::ZERO, Complex::ZERO, Complex::ZERO, -Complex::ONE
         ];
-        assert_eq!(cz_gate.data.shape, vec![2, 2, 2, 2]);
-        assert_eq!(cz_gate.data.data, expected);
+        assert_eq!(cz_gate.tensor.shape, vec![2, 2, 2, 2]);
+        assert_eq!(cz_gate.tensor.data, expected);
     }
     #[test]
     fn test_operator_swap() {
@@ -79,8 +79,8 @@ mod tests_operators {
             Complex::ZERO, Complex::ONE, Complex::ZERO, Complex::ZERO,
             Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ONE
         ];
-        assert_eq!(swap_gate.data.shape, vec![2, 2, 2, 2]);
-        assert_eq!(swap_gate.data.data, expected);
+        assert_eq!(swap_gate.tensor.shape, vec![2, 2, 2, 2]);
+        assert_eq!(swap_gate.tensor.data, expected);
     }
     #[test]
     fn test_transconjugate_x() {
@@ -90,8 +90,8 @@ mod tests_operators {
             Complex::ZERO, Complex::ONE,
             Complex::ONE, Complex::ZERO
         ];
-        assert_eq!(x.data.shape, vec![2, 2]);
-        assert_eq!(x.data.data, expected);
+        assert_eq!(x.tensor.shape, vec![2, 2]);
+        assert_eq!(x.tensor.data, expected);
     }
     #[test]
     fn test_transconjugate_y() {
@@ -101,8 +101,8 @@ mod tests_operators {
             Complex::ZERO, Complex::new(0., -1.),
             Complex::new(0., 1.), Complex::ZERO
         ];
-        assert_eq!(y.data.shape, vec![2, 2]);
-        assert_eq!(y.data.data, expected);
+        assert_eq!(y.tensor.shape, vec![2, 2]);
+        assert_eq!(y.tensor.data, expected);
     }
     #[test]
     fn test_transconjugate_z() {
@@ -112,8 +112,8 @@ mod tests_operators {
             Complex::ONE, Complex::ZERO,
             Complex::ZERO, -Complex::ONE
         ];
-        assert_eq!(z.data.shape, vec![2, 2]);
-        assert_eq!(z.data.data, expected);
+        assert_eq!(z.tensor.shape, vec![2, 2]);
+        assert_eq!(z.tensor.data, expected);
     }
     #[test]
     fn test_transconjugate_h() {
@@ -123,8 +123,8 @@ mod tests_operators {
             Complex::new(FRAC_1_SQRT_2, 0.), Complex::new(FRAC_1_SQRT_2, 0.),
             Complex::new(FRAC_1_SQRT_2, 0.), Complex::new(FRAC_1_SQRT_2, 0.)
         ];
-        assert_eq!(h.data.shape, vec![2, 2]);
-        assert_eq!(h.data.data, expected);
+        assert_eq!(h.tensor.shape, vec![2, 2]);
+        assert_eq!(h.tensor.data, expected);
     }
     #[test]
     fn test_transconjugate_random_unitary() {
@@ -138,7 +138,7 @@ mod tests_operators {
             Complex::new(0.5, -0.5), Complex::new(0.5, 0.5),
             Complex::new(0.5, 0.5), Complex::new(0.5, -0.5)
         ];
-        assert_eq!(u.data.shape, vec![2, 2]);
-        assert_eq!(u.data.data, expected);
+        assert_eq!(u.tensor.shape, vec![2, 2]);
+        assert_eq!(u.tensor.data, expected);
     }
 }

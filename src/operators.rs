@@ -22,12 +22,12 @@ pub enum TwoQubitsOp {
 #[derive(Clone)]
 pub struct Operator {
     pub nqubits: usize,
-    pub data: Tensor<Complex<f64>>
+    pub tensor: Tensor<Complex<f64>>
 }
 
 impl fmt::Display for Operator {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.data.print(f, &self.data.shape, &self.data.data)
+        self.tensor.print(f, &self.tensor.shape, &self.tensor.data)
     }
 }
 
@@ -40,7 +40,7 @@ impl Operator {
         let nqubits = size.log2() as usize;
         let shape = vec![2; 2 * nqubits];
 
-        Ok(Operator { nqubits, data: Tensor::from_vec(data, shape) })
+        Ok(Operator { nqubits, tensor: Tensor::from_vec(data, shape) })
     }
 
     pub fn one_qubit(gate: OneQubitOp) -> Self {
@@ -65,7 +65,7 @@ impl Operator {
         }
         Self {
             nqubits,
-            data: Tensor::from_vec(data, vec![2, 2])
+            tensor: Tensor::from_vec(data, vec![2, 2])
         }
     }
 
@@ -92,13 +92,13 @@ impl Operator {
         }
         Self {
             nqubits,
-            data: Tensor::from_vec(data, vec![2, 2, 2, 2])
+            tensor: Tensor::from_vec(data, vec![2, 2, 2, 2])
         }
     }
 
     pub fn conj(&self) -> Operator {
-        let new_data = self.data.data.iter().map(|e| e.conj()).collect::<Vec<Complex<f64>>>();
-        Operator { nqubits: self.nqubits, data: Tensor::from_vec(new_data, self.data.shape.clone()) }
+        let new_data = self.tensor.data.iter().map(|e| e.conj()).collect::<Vec<Complex<f64>>>();
+        Operator { nqubits: self.nqubits, tensor: Tensor::from_vec(new_data, self.tensor.shape.clone()) }
     }
  
     pub fn transpose(&self) -> Operator {
@@ -107,10 +107,10 @@ impl Operator {
         for i in 0..size {
             for j in 0..size{
                 let indices = bitwise_int_to_bin_vec(i * size + j, 2 * self.nqubits);
-                result[j * size + i] = self.data.get(&indices);
+                result[j * size + i] = self.tensor.get(&indices);
             }
         }
-        Operator { nqubits: self.nqubits, data: Tensor::from_vec(result, self.data.shape.clone()) } 
+        Operator { nqubits: self.nqubits, tensor: Tensor::from_vec(result, self.tensor.shape.clone()) } 
     }
 
     pub fn transconj(&self) -> Operator {
@@ -119,9 +119,9 @@ impl Operator {
         for i in 0..size {
             for j in 0..size{
                 let indices = bitwise_int_to_bin_vec(i * size + j, 2 * self.nqubits);
-                new_data[j * size + i] = self.data.get(&indices).conj();
+                new_data[j * size + i] = self.tensor.get(&indices).conj();
             }
         }
-        Operator { nqubits: self.nqubits, data: Tensor::from_vec(new_data, self.data.shape.clone()) }        
+        Operator { nqubits: self.nqubits, tensor: Tensor::from_vec(new_data, self.tensor.shape.clone()) }        
     }
 }

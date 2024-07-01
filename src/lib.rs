@@ -75,7 +75,7 @@ fn dm_simu_rs<'py>(
         dm_py_vec: PyVec<'py>,
     ) -> pyo3::prelude::Bound<'py, numpy::array::PyArray1<Complex<f64>>> {
         let dm = get_dm_ref(dm_py_vec);
-        numpy::IntoPyArray::into_pyarray_bound(dm.data.data.to_vec(), py)
+        numpy::IntoPyArray::into_pyarray_bound(dm.tensor.data.to_vec(), py)
     }
     m.add_function(pyo3::wrap_pyfunction!(get_dm, m)?)?;
 
@@ -98,7 +98,7 @@ fn dm_simu_rs<'py>(
         op_py_vec: PyVec<'py>,
     ) -> pyo3::prelude::Bound<'py, numpy::array::PyArray1<Complex<f64>>> {
         let op = get_op_ref(op_py_vec);
-        numpy::IntoPyArray::into_pyarray_bound(op.data.data.to_vec(), py)
+        numpy::IntoPyArray::into_pyarray_bound(op.tensor.data.to_vec(), py)
     }
     m.add_function(pyo3::wrap_pyfunction!(get_op, m)?)?;
 
