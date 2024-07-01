@@ -111,7 +111,7 @@ where
     // Method to compute the tensor product of two tensors
     pub fn tensor_product(&self, other: &Tensor<T>) -> Tensor<T>
     where
-        T: Clone + Send + Sync + Sized + std::ops::Mul<Output = T>,
+        T: Copy + Send + Sync + Sized + std::ops::Mul<Output = T>,
     {
         // Check if tensors are compatible for tensor product
         assert_eq!(self.data.len(), self.shape.iter().product());
@@ -122,18 +122,16 @@ where
         new_shape.extend_from_slice(&other.shape);
 
         // Calculate the data of the resulting tensor
-        let new_data: Vec<T> = self
-            .data
-            .par_iter()
-            .flat_map(|x| other.data
-                .par_iter()
-                .map(move |y| x.clone() * y.clone()))
+        let new_data: Vec<T> = (0..self.data.len() * other.data.len())
+            .into_par_iter()
+            .map(|index| {
+                let i = index / other.data.len();
+                let j = index % other.data.len();
+                self.data[i] * other.data[j]
+            })
             .collect();
 
-        Tensor {
-            data: new_data,
-            shape: new_shape,
-        }
+        Tensor::from_vec(new_data, new_shape)
     }
 
     pub fn tensordot(&self, other: &Tensor<T>, axes: (&[usize], &[usize])) -> Result<Tensor<T>, &str>

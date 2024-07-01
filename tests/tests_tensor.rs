@@ -65,7 +65,7 @@ mod tests_tensor {
     }
 
     #[test]
-    fn test_tensor_product() {
+    fn test_tensor_product_simple_case() {
         // Create the first tensor: [1, 2, 3]
         let tensor1 = Tensor::from_vec(vec![Complex::new(1., 0.), Complex::new(2., 0.), Complex::new(3., 0.)], vec![3]);
 
@@ -81,6 +81,33 @@ mod tests_tensor {
         // Data: [1*4, 1*5, 2*4, 2*5, 3*4, 3*5] => [4, 5, 8, 10, 12, 15]
         assert_eq!(result_tensor.shape, vec![3, 2]);
         assert_eq!(result_tensor.data, vec![Complex::new(4., 0.), Complex::new(5., 0.), Complex::new(8., 0.),  Complex::new(10., 0.), Complex::new(12., 0.), Complex::new(15., 0.)]);
+    }
+
+    #[test]
+    fn test_tensor_product_with_zeros() {
+        let tensor1 = Tensor::from_vec(vec![0, 0], vec![2]);
+        let tensor2 = Tensor::from_vec(vec![1, 2], vec![2]);
+        
+        let result_tensor = tensor1.tensor_product(&tensor2);
+
+        assert_eq!(result_tensor.shape, vec![2, 2]);
+        assert_eq!(result_tensor.data, vec![0, 0, 0, 0]);
+    }
+
+    #[test]
+    fn test_tensor_product_different_shapes() {
+        let tensor1 = Tensor::from_vec(vec![1, 2, 3, 4, 5, 6, 7, 8], vec![4, 2]);
+
+        let tensor2 = Tensor::from_vec(vec![1, 2, 3, 4, 5], vec![5]);
+
+        
+        let result_tensor = tensor1.tensor_product(&tensor2);
+
+        // Expected result:
+        // Shape: [3, 2]
+        // Data: [1*4, 1*5, 2*4, 2*5, 3*4, 3*5] => [4, 5, 8, 10, 12, 15]
+        assert_eq!(result_tensor.shape, vec![4, 2, 5]);
+        assert_eq!(result_tensor.data, vec![1, 2, 3, 4, 5, 2, 4, 6, 8, 10, 3, 6, 9, 12, 15, 4, 8, 12, 16, 20, 5, 10, 15, 20, 25, 6, 12, 18, 24, 30, 7, 14, 21, 28, 35, 8, 16, 24, 32, 40]);
     }
 
     #[test]
