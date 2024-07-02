@@ -163,7 +163,7 @@ fn dm_simu_rs<'py>(
         dm: PyVec<'py>, other: PyVec<'py>) -> pyo3::prelude::Bound<'py, numpy::array::PyArray1<Complex<f64>>> {
         let dm = get_dm_mut_ref(dm);
         let other_dm = get_dm_ref(other);
-        numpy::IntoPyArray::into_pyarray_bound(dm.tensor.tensor_product(&other_dm.tensor).data, py)
+        numpy::IntoPyArray::into_pyarray_bound(dm.tensor.product(&other_dm.tensor).data, py)
     }
     m.add_function(pyo3::wrap_pyfunction!(get_tensor_dm, m)?)?;
 

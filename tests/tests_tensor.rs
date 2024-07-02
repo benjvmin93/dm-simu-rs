@@ -116,8 +116,8 @@ mod tests_tensor {
         let tensor2 = Tensor::from_vec(vec![Complex::new(4., 0.), Complex::new(5., 0.)], vec![2]);
 
         // Calculate the tensor product
-
-        let result_tensor = tensor1.tensor_product(&tensor2);
+        
+        let result_tensor = tensor1.product(&tensor2);
 
         // Expected result:
         // Shape: [3, 2]
@@ -140,8 +140,8 @@ mod tests_tensor {
     fn test_tensor_product_with_zeros() {
         let tensor1 = Tensor::from_vec(vec![0, 0], vec![2]);
         let tensor2 = Tensor::from_vec(vec![1, 2], vec![2]);
-
-        let result_tensor = tensor1.tensor_product(&tensor2);
+        
+        let result_tensor = tensor1.product(&tensor2);
 
         assert_eq!(result_tensor.shape, vec![2, 2]);
         assert_eq!(result_tensor.data, vec![0, 0, 0, 0]);
@@ -153,7 +153,8 @@ mod tests_tensor {
 
         let tensor2 = Tensor::from_vec(vec![1, 2, 3, 4, 5], vec![5]);
 
-        let result_tensor = tensor1.tensor_product(&tensor2);
+        
+        let result_tensor = tensor1.product(&tensor2);
 
         // Expected result:
         // Shape: [3, 2]

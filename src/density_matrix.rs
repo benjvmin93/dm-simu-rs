@@ -269,7 +269,7 @@ impl DensityMatrix {
     }
 
     pub fn tensor(&mut self, other: &DensityMatrix) {
-        self.tensor = self.tensor.tensor_product(&other.tensor);
+        self.tensor = self.tensor.product(&other.tensor);
         self.nqubits += other.nqubits;
     }
 

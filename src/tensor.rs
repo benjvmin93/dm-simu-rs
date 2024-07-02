@@ -116,7 +116,7 @@ where
     }
 
     // Method to compute the tensor product of two tensors
-    pub fn tensor_product(&self, other: &Tensor<T>) -> Tensor<T>
+    pub fn product(&self, other: &Tensor<T>) -> Tensor<T>
     where
         T: Copy + Send + Sync + Sized + std::ops::Mul<Output = T>,
     {
