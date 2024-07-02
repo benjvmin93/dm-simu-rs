@@ -1,12 +1,12 @@
-pub mod tensor;
 pub mod density_matrix;
 pub mod operators;
+pub mod tensor;
 pub mod tools;
 
-use num_complex::Complex;
-use pyo3::prelude::*;
 use density_matrix::{DensityMatrix, State};
+use num_complex::Complex;
 use operators::Operator;
+use pyo3::prelude::*;
 
 #[pyo3::pymodule]
 fn dm_simu_rs<'py>(
@@ -75,7 +75,7 @@ fn dm_simu_rs<'py>(
         dm_py_vec: PyVec<'py>,
     ) -> pyo3::prelude::Bound<'py, numpy::array::PyArray1<Complex<f64>>> {
         let dm = get_dm_ref(dm_py_vec);
-        numpy::IntoPyArray::into_pyarray_bound(dm.tensor.data.to_vec(), py)
+        numpy::ToPyArray::to_pyarray_bound(dm.tensor.data.as_slice(), py)
     }
     m.add_function(pyo3::wrap_pyfunction!(get_dm, m)?)?;
 
@@ -98,7 +98,7 @@ fn dm_simu_rs<'py>(
         op_py_vec: PyVec<'py>,
     ) -> pyo3::prelude::Bound<'py, numpy::array::PyArray1<Complex<f64>>> {
         let op = get_op_ref(op_py_vec);
-        numpy::IntoPyArray::into_pyarray_bound(op.tensor.data.to_vec(), py)
+        numpy::ToPyArray::to_pyarray_bound(op.tensor.data.as_slice(), py)
     }
     m.add_function(pyo3::wrap_pyfunction!(get_op, m)?)?;
 
@@ -110,7 +110,12 @@ fn dm_simu_rs<'py>(
     m.add_function(pyo3::wrap_pyfunction!(get_nqubits, m)?)?;
 
     #[pyo3::pyfunction]
-    fn evolve_single<'py>(py: pyo3::prelude::Python<'py>, py_dm: PyVec<'py>, py_op: PyVec<'py>, qubit: usize) -> pyo3::prelude::PyResult<()> {
+    fn evolve_single<'py>(
+        py: pyo3::prelude::Python<'py>,
+        py_dm: PyVec<'py>,
+        py_op: PyVec<'py>,
+        qubit: usize,
+    ) -> pyo3::prelude::PyResult<()> {
         let dm = get_dm_mut_ref(py_dm);
         let op = get_op_ref(py_op);
         Ok(dm.evolve_single(op, qubit).unwrap())
@@ -118,7 +123,12 @@ fn dm_simu_rs<'py>(
     m.add_function(pyo3::wrap_pyfunction!(evolve_single, m)?)?;
 
     #[pyo3::pyfunction]
-    fn evolve<'py>(py: pyo3::prelude::Python<'py>, py_dm: PyVec<'py>, py_op: PyVec<'py>, qubits: Vec<usize>) -> pyo3::prelude::PyResult<()> {
+    fn evolve<'py>(
+        py: pyo3::prelude::Python<'py>,
+        py_dm: PyVec<'py>,
+        py_op: PyVec<'py>,
+        qubits: Vec<usize>,
+    ) -> pyo3::prelude::PyResult<()> {
         let dm = get_dm_mut_ref(py_dm);
         let op = get_op_ref(py_op);
         Ok(dm.evolve(op, &qubits).unwrap())
@@ -142,10 +152,20 @@ fn dm_simu_rs<'py>(
     #[pyo3::pyfunction]
     fn tensor_dm<'py>(dm: PyVec<'py>, other: PyVec<'py>) -> pyo3::prelude::PyResult<()> {
         let dm = get_dm_mut_ref(dm);
-        let other_dm = get_dm_mut_ref(other);
+        let other_dm = get_dm_ref(other);
         Ok(dm.tensor(other_dm))
     }
     m.add_function(pyo3::wrap_pyfunction!(tensor_dm, m)?)?;
+
+    #[pyo3::pyfunction]
+    fn get_tensor_dm<'py>(
+        py: pyo3::prelude::Python<'py>,
+        dm: PyVec<'py>, other: PyVec<'py>) -> pyo3::prelude::Bound<'py, numpy::array::PyArray1<Complex<f64>>> {
+        let dm = get_dm_mut_ref(dm);
+        let other_dm = get_dm_ref(other);
+        numpy::IntoPyArray::into_pyarray_bound(dm.tensor.tensor_product(&other_dm.tensor).data, py)
+    }
+    m.add_function(pyo3::wrap_pyfunction!(get_tensor_dm, m)?)?;
 
     Ok(())
 }

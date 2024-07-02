@@ -1,7 +1,6 @@
 mod density_matrix;
+mod operators;
 mod tensor;
 mod tools;
-mod operators;
 
-fn main() {
-}
+fn main() {}

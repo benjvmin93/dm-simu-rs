@@ -1,10 +1,11 @@
 import functools
+import time
 import hypothesis as hyp
 import numpy as np
 import dm_simu_rs
 
 MIN_QUBITS = 1
-MAX_QUBITS = 6
+MAX_QUBITS = 8
 
 def get_dm_nqubits(array: np.ndarray) -> int:
     size = np.sqrt(len(array))
@@ -24,6 +25,7 @@ complex_st = hyp.strategies.complex_numbers(min_magnitude=1e-5, max_magnitude=1e
 states = [
     np.array([[1, 0]], dtype=np.complex128),  # |0>
     np.array([[0, 1]], dtype=np.complex128),  # |1>
+    np.array([[0, 1j]], dtype=np.complex128),
     np.array([[1, 1]] / np.sqrt(2), dtype=np.complex128), # |+>
     np.array([[1, -1]] / np.sqrt(2), dtype=np.complex128) # |->
 ]
@@ -145,7 +147,7 @@ def build_sv(state: np.ndarray, nqubits: int) -> np.ndarray:
 
 def build_rho_from_sv(state: np.ndarray, nqubits: int) -> np.ndarray:
     psi = functools.reduce(np.kron, (state for _ in range(nqubits)), np.array([1], dtype=np.complex128))
-    return np.outer(psi, psi)
+    return np.outer(psi, psi.conj())
 
 
 def dm_st():
@@ -181,7 +183,7 @@ def test_new_dm(nqubits, state):
         state_mat = np.array([1, 1]) / np.sqrt(2)
     else:
         assert False
-    rho = np.outer(state_mat, state_mat)
+    rho = np.outer(state_mat, state_mat.conj())
     ref = functools.reduce(np.kron, (rho for _ in range(nqubits)), np.array(1, dtype=np.complex128))
     np.testing.assert_allclose(array, ref.flatten())
 
@@ -200,11 +202,12 @@ def test_dm_from_vec(nqubits, state):
     arr = dm_simu_rs.get_dm(dm)
     size = 1 << nqubits
     assert len(arr) == size * size
-    ref = np.outer(sv, sv)
+    ref = np.outer(sv, sv.conj())
     np.testing.assert_allclose(arr, ref.flatten())
 
 
-@hyp.given(sv_st(), sv_st())
+@hyp.given(sv_st(max=7), sv_st(max=7))
+@hyp.settings(deadline=None)
 def test_tensor_dm(sv_1, sv_2):
     """
         Test for tensoring two density matrices.
@@ -215,16 +218,20 @@ def test_tensor_dm(sv_1, sv_2):
     arr_dm_1 = dm_simu_rs.get_dm(dm_1)
     arr_dm_2 = dm_simu_rs.get_dm(dm_2)
 
-    ref_1 = np.outer(sv_1, sv_1)
+    ref_1 = np.outer(sv_1, sv_1.conj())
     np.testing.assert_allclose(arr_dm_1, ref_1.flatten())
 
-    ref_2 = np.outer(sv_2, sv_2)
+    ref_2 = np.outer(sv_2, sv_2.conj())
     np.testing.assert_allclose(arr_dm_2, ref_2.flatten())
-    
-    dm_simu_rs.tensor_dm(dm_1, dm_2)
-    
+    print("tensor_dm")
+    start = time.perf_counter()
+    array = dm_simu_rs.get_tensor_dm(dm_1, dm_2)
+    print("tensor_dm time:", time.perf_counter() - start)
+    print("kron")
+    start = time.perf_counter()
     ref = np.kron(ref_1.flatten(), ref_2.flatten())
-    array = dm_simu_rs.get_dm(dm_1)
+    print("kron time:", time.perf_counter() - start)
+    print("allclose")
     np.testing.assert_allclose(array, ref.flatten())
 
 
@@ -238,7 +245,7 @@ def test_evolve_single(sv, op):
    """
    op_simu = dm_simu_rs.new_op(op.flatten())
    dm = dm_simu_rs.new_dm_from_vec(sv)
-   dm_ref = np.outer(sv, sv)
+   dm_ref = np.outer(sv, sv.conj())
 
    dm_arr = dm_simu_rs.get_dm(dm)
    np.testing.assert_allclose(dm_arr, dm_ref.flatten())
@@ -268,7 +275,7 @@ def test_evolve(sv, op):
    """
    op_simu = dm_simu_rs.new_op(op.flatten())
    dm = dm_simu_rs.new_dm_from_vec(sv)
-   dm_ref = np.outer(sv, sv)
+   dm_ref = np.outer(sv, sv.conj())
 
    dm_arr = dm_simu_rs.get_dm(dm)
    np.testing.assert_allclose(dm_arr, dm_ref.flatten())
