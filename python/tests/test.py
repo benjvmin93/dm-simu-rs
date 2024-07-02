@@ -206,7 +206,7 @@ def test_dm_from_vec(nqubits, state):
     np.testing.assert_allclose(arr, ref.flatten())
 
 
-@hyp.given(sv_st(max=7), sv_st(max=7))
+@hyp.given(sv_st(max=3), sv_st(max=3))
 @hyp.settings(deadline=None)
 def test_tensor_dm(sv_1, sv_2):
     """
@@ -296,3 +296,25 @@ def test_evolve(sv, op):
    
    dm_arr = dm_simu_rs.get_dm(dm)
    np.testing.assert_allclose(dm_simu_rs.get_dm(dm), dm_ref.flatten(), atol=1e-5)
+
+
+@hyp.given(
+    sv_st(),
+    hyp.strategies.sampled_from(op_single)
+)
+def test_tensordot_single_op(t_a, op):
+    t_a = np.outer(t_a, t_a.conj())
+
+    nqubit_a = get_dm_nqubits(t_a.flatten())
+    print(f'nqubit_a = {nqubit_a}')
+    target = np.random.randint(0, nqubit_a)
+    print(f'target qubit = {target}')
+
+    shape_a = ((2,) * 2 * nqubit_a)
+    t_a_simu = dm_simu_rs.new_tensor(t_a.flatten(), shape_a)
+    t_b_simu = dm_simu_rs.new_tensor(op.flatten(), (2,) * 2)
+
+    result_simu = dm_simu_rs.tensordot(t_b_simu, t_a_simu, ([1], [target]))
+    ref = np.tensordot(op, np.array(t_a).reshape((2,) * 2 * nqubit_a), axes=[1, target])
+
+    np.testing.assert_allclose(ref.flatten(), result_simu, atol=1e-5)

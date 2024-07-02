@@ -120,24 +120,10 @@ where
     where
         T: Copy + Send + Sync + Sized + std::ops::Mul<Output = T>,
     {
-        // Check if tensors are compatible for tensor product
-        assert_eq!(self.data.len(), self.shape.iter().product());
-        assert_eq!(other.data.len(), other.shape.iter().product());
-
         // Calculate the shape of the resulting tensor
         let new_shape: Vec<usize> = self.shape.iter().chain(other.shape.iter()).cloned().collect();
 
         // Calculate the data of the resulting tensor
-/*
-        let new_data: Vec<T> = (0..self.data.len() * other.data.len())
-            .into_par_iter()
-            .map(|index| {
-                let i = index / other.data.len();
-                let j = index % other.data.len();
-                self.data[i] * other.data[j]
-            })
-            .collect();
-*/
         let new_data: Vec<T> = self.data.par_iter().map(
             |&x|
             other.data.par_iter().map(move |&y| x * y)).flatten().collect();

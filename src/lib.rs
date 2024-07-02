@@ -6,7 +6,8 @@ pub mod tools;
 use density_matrix::{DensityMatrix, State};
 use num_complex::Complex;
 use operators::Operator;
-use pyo3::prelude::*;
+use pyo3::{exceptions::PyValueError, prelude::*};
+use tensor::Tensor;
 
 #[pyo3::pymodule]
 fn dm_simu_rs<'py>(
@@ -32,6 +33,18 @@ fn dm_simu_rs<'py>(
     ) -> pyo3::prelude::PyResult<PyVec<'py>> {
         let capsule_name = std::ffi::CString::new("operator").unwrap();
         pyo3::types::PyCapsule::new_bound(py, op, Some(capsule_name))
+    }
+
+    fn make_tensor_pyvec<'py>(
+        py: pyo3::prelude::Python<'py>,
+        tensor: Tensor<Complex<f64>>
+    ) -> pyo3::prelude::PyResult<PyVec<'py>> {
+        let capsule_name = std::ffi::CString::new("tensor").unwrap();
+        pyo3::types::PyCapsule::new_bound(py, tensor, Some(capsule_name))
+    }
+
+    fn get_tensor_ref<'py>(op: PyVec<'py>) -> &Tensor<Complex<f64>> {
+        unsafe { op.reference::<Tensor<Complex<f64>>>() }
     }
 
     fn get_op_ref<'py>(op: PyVec<'py>) -> &Operator {
@@ -91,6 +104,19 @@ fn dm_simu_rs<'py>(
         )
     }
     m.add_function(pyo3::wrap_pyfunction!(new_op, m)?)?;
+
+    #[pyo3::pyfunction]
+    fn new_tensor<'py>(
+        py: pyo3::prelude::Python<'py>,
+        data: numpy::borrow::PyReadonlyArrayDyn<Complex<f64>>,
+        shape: Vec<usize>
+    ) -> pyo3::prelude::PyResult<PyVec<'py>> {
+        make_tensor_pyvec(
+            py,
+            Tensor::from_vec(data.as_slice()?.to_vec(), shape)
+        )
+    }
+    m.add_function(pyo3::wrap_pyfunction!(new_tensor, m)?)?;
 
     #[pyo3::pyfunction]
     fn get_op<'py>(
@@ -167,5 +193,22 @@ fn dm_simu_rs<'py>(
     }
     m.add_function(pyo3::wrap_pyfunction!(get_tensor_dm, m)?)?;
 
+    #[pyo3::pyfunction]
+    fn tensordot<'py>(
+        py: pyo3::prelude::Python<'py>,
+        tensor_a: PyVec<'py>,
+        tensor_b: PyVec<'py>,
+        axes: (Vec<usize>, Vec<usize>)
+    ) -> pyo3::prelude::Bound<'py, numpy::array::PyArray1<Complex<f64>>> {
+        let tensor_a = get_tensor_ref(tensor_a);
+        let tensor_b = get_tensor_ref(tensor_b);
+        numpy::IntoPyArray::into_pyarray_bound(tensor_a.tensordot(tensor_b, (&axes.0, &axes.1)).unwrap().data, py)
+    }
+    m.add_function(pyo3::wrap_pyfunction!(tensordot, m)?)?;
+
     Ok(())
+
+    // TODO
+        // NORMALIZE
+        // EXPECTATION SINGLE or TENSORDOT
 }
