@@ -121,12 +121,20 @@ where
         T: Copy + Send + Sync + Sized + std::ops::Mul<Output = T>,
     {
         // Calculate the shape of the resulting tensor
-        let new_shape: Vec<usize> = self.shape.iter().chain(other.shape.iter()).cloned().collect();
+        let new_shape: Vec<usize> = self
+            .shape
+            .iter()
+            .chain(other.shape.iter())
+            .cloned()
+            .collect();
 
         // Calculate the data of the resulting tensor
-        let new_data: Vec<T> = self.data.par_iter().map(
-            |&x|
-            other.data.par_iter().map(move |&y| x * y)).flatten().collect();
+        let new_data: Vec<T> = self
+            .data
+            .par_iter()
+            .map(|&x| other.data.par_iter().map(move |&y| x * y))
+            .flatten()
+            .collect();
         Tensor::from_vec(new_data, new_shape)
     }
 
@@ -390,15 +398,16 @@ where
                 }
                 write!(f, "{:?}", item)?;
             }
-            write!(f, "]");
+            write!(f, "]\n")?;
         } else {
             let chunk_size: usize = self.shape[1..].iter().product();
-            for (i, _chunk) in self.data.chunks(chunk_size).enumerate() {
+            for (i, chunk) in self.data.chunks(chunk_size).enumerate() {
                 if i != 0 {
                     write!(f, ", ")?;
                 }
+                self.print(f, &self.shape[1..], chunk)?
             }
-            write!(f, "]");
+            write!(f, "]\n")?;
         }
         write!(f, ")")
     }
