@@ -6,7 +6,7 @@ pub mod tools;
 use density_matrix::{DensityMatrix, State};
 use num_complex::Complex;
 use operators::Operator;
-use pyo3::{exceptions::PyValueError, prelude::*};
+use pyo3::prelude::*;
 use tensor::Tensor;
 
 #[pyo3::pymodule]
@@ -37,7 +37,7 @@ fn dm_simu_rs<'py>(
 
     fn make_tensor_pyvec<'py>(
         py: pyo3::prelude::Python<'py>,
-        tensor: Tensor<Complex<f64>>
+        tensor: Tensor<Complex<f64>>,
     ) -> pyo3::prelude::PyResult<PyVec<'py>> {
         let capsule_name = std::ffi::CString::new("tensor").unwrap();
         pyo3::types::PyCapsule::new_bound(py, tensor, Some(capsule_name))
@@ -93,6 +93,21 @@ fn dm_simu_rs<'py>(
     m.add_function(pyo3::wrap_pyfunction!(get_dm, m)?)?;
 
     #[pyo3::pyfunction]
+    fn set_dm<'py>(
+        dm_py_vec: PyVec<'py>,
+        data: numpy::borrow::PyReadonlyArrayDyn<Complex<f64>>,
+        shape: Vec<usize>,
+    ) -> pyo3::prelude::PyResult<()> {
+        let dm = get_dm_mut_ref(dm_py_vec);
+        dm.nqubits = shape.len() / 2;
+        dm.size = 2_i32.pow(dm.nqubits as u32) as usize;
+        dm.tensor.data = data.as_slice()?.to_vec();
+        dm.tensor.shape = shape;
+        PyResult::Ok(())
+    }
+    m.add_function(pyo3::wrap_pyfunction!(set_dm, m)?)?;
+
+    #[pyo3::pyfunction]
     fn new_op<'py>(
         py: pyo3::prelude::Python<'py>,
         data: numpy::borrow::PyReadonlyArrayDyn<Complex<f64>>,
@@ -109,14 +124,21 @@ fn dm_simu_rs<'py>(
     fn new_tensor<'py>(
         py: pyo3::prelude::Python<'py>,
         data: numpy::borrow::PyReadonlyArrayDyn<Complex<f64>>,
-        shape: Vec<usize>
+        shape: Vec<usize>,
     ) -> pyo3::prelude::PyResult<PyVec<'py>> {
-        make_tensor_pyvec(
-            py,
-            Tensor::from_vec(data.as_slice()?.to_vec(), shape)
-        )
+        make_tensor_pyvec(py, Tensor::from_vec(data.as_slice()?.to_vec(), shape))
     }
     m.add_function(pyo3::wrap_pyfunction!(new_tensor, m)?)?;
+
+    #[pyo3::pyfunction]
+    fn get_tensor_shape<'py>(
+        py: pyo3::prelude::Python<'py>,
+        dm: PyVec<'py>,
+    ) -> pyo3::prelude::Bound<'py, numpy::array::PyArray1<usize>> {
+        let dm = get_dm_ref(dm);
+        numpy::ToPyArray::to_pyarray_bound(dm.tensor.shape.as_slice(), py)
+    }
+    m.add_function(pyo3::wrap_pyfunction!(get_tensor_shape, m)?)?;
 
     #[pyo3::pyfunction]
     fn get_op<'py>(
@@ -186,7 +208,9 @@ fn dm_simu_rs<'py>(
     #[pyo3::pyfunction]
     fn get_tensor_dm<'py>(
         py: pyo3::prelude::Python<'py>,
-        dm: PyVec<'py>, other: PyVec<'py>) -> pyo3::prelude::Bound<'py, numpy::array::PyArray1<Complex<f64>>> {
+        dm: PyVec<'py>,
+        other: PyVec<'py>,
+    ) -> pyo3::prelude::Bound<'py, numpy::array::PyArray1<Complex<f64>>> {
         let dm = get_dm_mut_ref(dm);
         let other_dm = get_dm_ref(other);
         numpy::IntoPyArray::into_pyarray_bound(dm.tensor.product(&other_dm.tensor).data, py)
@@ -194,21 +218,34 @@ fn dm_simu_rs<'py>(
     m.add_function(pyo3::wrap_pyfunction!(get_tensor_dm, m)?)?;
 
     #[pyo3::pyfunction]
+    fn normalize<'py>(dm: PyVec<'py>) -> pyo3::prelude::PyResult<()> {
+        let dm = get_dm_mut_ref(dm);
+        Ok(dm.normalize())
+    }
+    m.add_function(pyo3::wrap_pyfunction!(normalize, m)?)?;
+
+    #[pyo3::pyfunction]
     fn tensordot<'py>(
         py: pyo3::prelude::Python<'py>,
         tensor_a: PyVec<'py>,
         tensor_b: PyVec<'py>,
-        axes: (Vec<usize>, Vec<usize>)
+        axes: (Vec<usize>, Vec<usize>),
     ) -> pyo3::prelude::Bound<'py, numpy::array::PyArray1<Complex<f64>>> {
         let tensor_a = get_tensor_ref(tensor_a);
         let tensor_b = get_tensor_ref(tensor_b);
-        numpy::IntoPyArray::into_pyarray_bound(tensor_a.tensordot(tensor_b, (&axes.0, &axes.1)).unwrap().data, py)
+        numpy::IntoPyArray::into_pyarray_bound(
+            tensor_a
+                .tensordot(tensor_b, (&axes.0, &axes.1))
+                .unwrap()
+                .data,
+            py,
+        )
     }
     m.add_function(pyo3::wrap_pyfunction!(tensordot, m)?)?;
 
     Ok(())
 
     // TODO
-        // NORMALIZE
-        // EXPECTATION SINGLE or TENSORDOT
+    // NORMALIZE
+    // EXPECTATION SINGLE or TENSORDOT
 }
