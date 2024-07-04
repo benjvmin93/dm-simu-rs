@@ -1,6 +1,8 @@
 use core::fmt;
+use std::ops::Div;
 
-use num_complex::Complex;
+use num_complex::{Complex, ComplexFloat};
+use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use tensor::Tensor;
 
 use crate::operators::{OneQubitOp, Operator, TwoQubitsOp};
@@ -69,13 +71,6 @@ impl DensityMatrix {
         }
         let nqubits = len.ilog2() as usize;
         let size = len;
-        /*let mut data = Vec::with_capacity(size * size);
-
-        for i in 0..size {
-            for j in 0..size {
-                data.push(statevec[i] * statevec[j].conj());
-            }
-        }*/
         let data: Vec<Complex<f64>> = (0..size)
             .map(|i| (0..size).map(move |j| statevec[i] * statevec[j].conj()))
             .flatten()
@@ -152,7 +147,8 @@ impl DensityMatrix {
         let mut trace = Complex::ZERO;
         let mut step = 0;
         for i in 0..self.size {
-            trace += self.tensor.get(&[i as u8, step]);
+            let indices = bitwise_int_to_bin_vec(i * self.size + step, 2 * self.nqubits);
+            trace += self.tensor.get(&indices);
             step += 1;
         }
 
@@ -161,11 +157,14 @@ impl DensityMatrix {
 
     pub fn normalize(&mut self) {
         let trace = self.trace();
+        if trace == Complex::ZERO || trace == Complex::ONE {
+            return;
+        }
         self.tensor.data = self
             .tensor
             .data
-            .iter()
-            .map(|&c| c / trace)
+            .par_iter()
+            .map(|&c| c.div(trace))
             .collect::<Vec<_>>();
     }
 
@@ -285,7 +284,7 @@ impl DensityMatrix {
         // Build identity tensor
         let id_tensor_size = 2_i32.pow(qargs.len() as u32) as usize;
         let mut id_tensor = Tensor::new(&vec![2; qargs.len() * 2]);
-        for i in 0..id_tensor_size * id_tensor_size {
+        for i in 0..id_tensor_size {
             let index = bitwise_int_to_bin_vec(i * id_tensor_size + i, qargs.len() * 2);
             id_tensor.set(&index, Complex::ONE);
         }

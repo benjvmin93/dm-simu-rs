@@ -1,10 +1,12 @@
 #[cfg(test)]
 mod tests_dm {
+    use std::f64::consts::FRAC_1_SQRT_2;
+
     use dm_simu_rs::density_matrix::{DensityMatrix, State};
     use dm_simu_rs::operators::{OneQubitOp, Operator, TwoQubitsOp};
     use dm_simu_rs::tensor::Tensor;
     use num_complex::Complex;
-    use num_traits::pow;
+    use num_traits::{One, Zero};
 
     const TOLERANCE: f64 = 1e-15;
 
@@ -1256,5 +1258,221 @@ mod tests_dm {
         let mut rho = DensityMatrix::new(3, State::ZERO);
         rho.evolve(&Operator::two_qubits(TwoQubitsOp::CX), &[0, 0])
             .unwrap();
+    }
+
+    #[test]
+    fn test_normalize_all_equal() {
+        let mut dm = DensityMatrix::from_statevec(&[
+            Complex::one(),
+            Complex::one(),
+            Complex::one(),
+            Complex::one(),
+        ])
+        .unwrap();
+        dm.normalize();
+        assert_eq!(dm.tensor.data, vec![Complex::new(0.25, 0.); 16]);
+    }
+
+    #[test]
+    fn test_normalize_with_zero() {
+        let mut dm = DensityMatrix::from_statevec(&vec![Complex::zero(); 4]).unwrap();
+        dm.normalize();
+        assert_eq!(dm.tensor.data, vec![Complex::zero(); 16]);
+    }
+
+    #[test]
+    fn test_normalize_with_negative_elements() {
+        let mut dm =
+            DensityMatrix::from_statevec(&vec![Complex::new(-1., 0.), Complex::new(-2., 0.)])
+                .unwrap();
+        dm.normalize();
+        let mut expected = vec![
+            Complex::new(0.2, 0.),
+            Complex::new(0.4, 0.),
+            Complex::new(0.4, 0.),
+            Complex::new(0.8, 0.),
+        ];
+        assert_eq!(dm.tensor.data, expected);
+    }
+
+    #[test]
+    fn test_normalize_already_normalized() {
+        let mut dm = DensityMatrix::from_statevec(&vec![
+            Complex::ONE,
+            Complex::ZERO,
+            Complex::ZERO,
+            Complex::ZERO,
+        ])
+        .unwrap();
+        dm.normalize();
+        let mut expected = vec![Complex::ZERO; 16];
+        expected[0] = Complex::ONE;
+        assert_eq!(dm.tensor.data, expected);
+    }
+
+    #[test]
+    fn test_normalize_large_numbers() {
+        let mut dm =
+            DensityMatrix::from_statevec(&vec![Complex::new(1000., 0.), Complex::new(2000., 0.)])
+                .unwrap();
+        println!("{}", dm);
+        dm.normalize();
+        let expected_data = vec![
+            Complex::new(0.2, 0.),
+            Complex::new(0.4, 0.),
+            Complex::new(0.4, 0.),
+            Complex::new(0.8, 0.),
+        ];
+        let t = Tensor::from_vec(expected_data, vec![2, 2]);
+        let expected = DensityMatrix::from_tensor(t).unwrap();
+        println!("{}", dm);
+        println!("{}", expected);
+        assert!(dm.equals(expected, TOLERANCE));
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_ptrace_fail_1() {
+        let mut dm = DensityMatrix::new(0, State::ZERO);
+        dm.ptrace(&[0]).unwrap();
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_ptrace_fail_2() {
+        let mut dm = DensityMatrix::new(2, State::ZERO);
+        dm.ptrace(&[2]).unwrap();
+    }
+
+    #[test]
+    fn test_ptrace_1() {
+        let mut dm = DensityMatrix::from_statevec(&[
+            Complex::new(FRAC_1_SQRT_2, 0.),
+            Complex::new(FRAC_1_SQRT_2, 0.),
+            Complex::ZERO,
+            Complex::ZERO,
+        ])
+        .unwrap();
+        dm.ptrace(&[0]).unwrap();
+        let expected = vec![
+            Complex::new(0.5, 0.),
+            Complex::new(0.5, 0.),
+            Complex::new(0.5, 0.),
+            Complex::new(0.5, 0.),
+        ];
+        let expected_dm =
+            DensityMatrix::from_tensor(Tensor::from_vec(expected, vec![2; 2])).unwrap();
+        assert_eq!(dm.nqubits, 1);
+        assert!(dm.equals(expected_dm, TOLERANCE));
+    }
+
+    #[test]
+    fn test_ptrace_2() {
+        let mut dm = DensityMatrix::from_statevec(&[
+            Complex::new(FRAC_1_SQRT_2, 0.),
+            Complex::new(FRAC_1_SQRT_2, 0.),
+            Complex::ZERO,
+            Complex::ZERO,
+        ])
+        .unwrap();
+        dm.ptrace(&[1]).unwrap();
+        let expected = vec![Complex::ONE, Complex::ZERO, Complex::ZERO, Complex::ZERO];
+        let expected_dm =
+            DensityMatrix::from_tensor(Tensor::from_vec(expected, vec![2; 2])).unwrap();
+        assert_eq!(dm.nqubits, 1);
+        assert!(dm.equals(expected_dm, TOLERANCE));
+    }
+
+    #[test]
+    fn test_ptrace_3() {
+        let mut dm = DensityMatrix::from_statevec(&[
+            Complex::new(FRAC_1_SQRT_2, 0.),
+            Complex::new(FRAC_1_SQRT_2, 0.),
+            Complex::ZERO,
+            Complex::ZERO,
+        ])
+        .unwrap();
+        dm.ptrace(&[0, 1]).unwrap();
+        let expected = vec![Complex::ONE];
+        let expected_dm = DensityMatrix {
+            tensor: Tensor {
+                data: expected,
+                shape: vec![],
+            },
+            size: 0,
+            nqubits: 0,
+        };
+        assert_eq!(dm.nqubits, 0);
+        assert!(dm.equals(expected_dm, TOLERANCE));
+    }
+
+    #[test]
+    fn test_ptrace_4() {
+        let mut dm = DensityMatrix::new(4, State::PLUS);
+        dm.ptrace(&[0, 1, 2]).unwrap();
+        let expected = vec![
+            Complex::new(0.5, 0.),
+            Complex::new(0.5, 0.),
+            Complex::new(0.5, 0.),
+            Complex::new(0.5, 0.),
+        ];
+        assert_eq!(dm.nqubits, 1);
+        assert_eq!(dm.tensor.data, expected);
+    }
+
+    #[test]
+    fn test_ptrace_5() {
+        let mut dm = DensityMatrix::new(4, State::ZERO);
+        dm.ptrace(&[0, 1, 2, 3]).unwrap();
+        let expected = vec![Complex::ONE];
+        assert_eq!(dm.nqubits, 0);
+        assert_eq!(dm.tensor.data, expected);
+    }
+
+    #[test]
+    fn test_ptrace_6() {
+        let frac_1_sqrt_3 = 1. / f64::sqrt(3_f64);
+        let sv = vec![
+            Complex::ZERO,
+            Complex::new(frac_1_sqrt_3, 0.),
+            Complex::ZERO,
+            Complex::ZERO,
+            Complex::ZERO,
+            Complex::new(f64::sqrt(2_f64) * frac_1_sqrt_3, 0.),
+            Complex::ZERO,
+            Complex::ZERO,
+        ];
+        let mut dm = DensityMatrix::from_statevec(&sv).unwrap();
+        dm.ptrace(&[2]).unwrap();
+        let expected = vec![
+            Complex::new(1. / 3., 0.),
+            Complex::ZERO,
+            Complex::new(2_f64.sqrt() / 3., 0.),
+            Complex::ZERO,
+            Complex::ZERO,
+            Complex::ZERO,
+            Complex::ZERO,
+            Complex::ZERO,
+            Complex::new(2_f64.sqrt() / 3., 0.),
+            Complex::ZERO,
+            Complex::new(2. / 3., 0.),
+            Complex::ZERO,
+            Complex::ZERO,
+            Complex::ZERO,
+            Complex::ZERO,
+            Complex::ZERO,
+        ];
+
+        assert!(dm.equals(
+            DensityMatrix {
+                tensor: Tensor {
+                    data: expected,
+                    shape: vec![2; 2 * 2]
+                },
+                size: 4,
+                nqubits: 2
+            },
+            TOLERANCE
+        ));
     }
 }

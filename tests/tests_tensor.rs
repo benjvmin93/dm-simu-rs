@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests_tensor {
-    use dm_simu_rs::tensor::Tensor;
+    use dm_simu_rs::{tensor::Tensor, tools::bitwise_int_to_bin_vec};
     use num_complex::Complex;
 
     #[test]
@@ -101,6 +101,40 @@ mod tests_tensor {
     }
 
     #[test]
+    fn test_tensor_get_large_tensor() {
+        let nqubits = 10;
+        let size = 2_i32.pow(nqubits);
+        let data = (0..(size * size)).collect::<Vec<i32>>();
+        let t = Tensor::from_vec(data, vec![2; 2 * nqubits as usize]);
+        for (i, x) in t.data.iter().enumerate() {
+            let indices = bitwise_int_to_bin_vec(i, 2 * nqubits as usize);
+            let elt = t.get(&indices);
+            assert_eq!(elt, *x);
+        }
+    }
+
+    #[test]
+    fn test_tensor_get_specific_data() {
+        let nqubits = 7;
+        let size = 2_i32.pow(nqubits) as usize;
+        let mut data = vec![Complex::ZERO; size * size];
+        let val = Complex::new(0.25, 0.);
+        for i in 0..4 {
+            data[i] = val;
+        }
+        let t = Tensor::from_vec(data, vec![2; 2 * nqubits as usize]);
+        for (i, x) in t.data.iter().enumerate() {
+            let indices = bitwise_int_to_bin_vec(i, 2 * nqubits as usize);
+            let elt = t.get(&indices);
+            if i < 4 {
+                assert_eq!(elt, val);
+            } else {
+                assert_eq!(elt, *x);
+            }
+        }
+    }
+
+    #[test]
     fn test_tensor_product_simple_case() {
         // Create the first tensor: [1, 2, 3]
         let tensor1 = Tensor::from_vec(
@@ -116,7 +150,7 @@ mod tests_tensor {
         let tensor2 = Tensor::from_vec(vec![Complex::new(4., 0.), Complex::new(5., 0.)], vec![2]);
 
         // Calculate the tensor product
-        
+
         let result_tensor = tensor1.product(&tensor2);
 
         // Expected result:
@@ -140,7 +174,7 @@ mod tests_tensor {
     fn test_tensor_product_with_zeros() {
         let tensor1 = Tensor::from_vec(vec![0, 0], vec![2]);
         let tensor2 = Tensor::from_vec(vec![1, 2], vec![2]);
-        
+
         let result_tensor = tensor1.product(&tensor2);
 
         assert_eq!(result_tensor.shape, vec![2, 2]);
@@ -153,7 +187,6 @@ mod tests_tensor {
 
         let tensor2 = Tensor::from_vec(vec![1, 2, 3, 4, 5], vec![5]);
 
-        
         let result_tensor = tensor1.product(&tensor2);
 
         // Expected result:
