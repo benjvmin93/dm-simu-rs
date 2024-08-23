@@ -198,24 +198,24 @@ fn dm_simu_rs<'py>(
     m.add_function(pyo3::wrap_pyfunction!(swap, m)?)?;
 
     #[pyo3::pyfunction]
-    fn tensor_dm<'py>(dm: PyVec<'py>, other: PyVec<'py>) -> pyo3::prelude::PyResult<()> {
+    fn tensor_dm<'py>(py: pyo3::prelude::Python<'py>, dm: PyVec<'py>, other: PyVec<'py>) -> pyo3::prelude::PyResult<PyVec<'py>> {
         let dm = get_dm_mut_ref(dm);
         let other_dm = get_dm_ref(other);
-        Ok(dm.tensor(other_dm))
+        make_dm_pyvec(py, dm.tensor(other_dm))
     }
     m.add_function(pyo3::wrap_pyfunction!(tensor_dm, m)?)?;
 
     #[pyo3::pyfunction]
-    fn get_tensor_dm<'py>(
+    fn kron<'py>(
         py: pyo3::prelude::Python<'py>,
         dm: PyVec<'py>,
         other: PyVec<'py>,
     ) -> pyo3::prelude::Bound<'py, numpy::array::PyArray1<Complex<f64>>> {
         let dm = get_dm_mut_ref(dm);
         let other_dm = get_dm_ref(other);
-        numpy::IntoPyArray::into_pyarray_bound(dm.tensor.product(&other_dm.tensor).data, py)
+        numpy::IntoPyArray::into_pyarray_bound(dm.tensor.product(&other_dm.tensor).unwrap().data, py)
     }
-    m.add_function(pyo3::wrap_pyfunction!(get_tensor_dm, m)?)?;
+    m.add_function(pyo3::wrap_pyfunction!(kron, m)?)?;
 
     #[pyo3::pyfunction]
     fn normalize<'py>(dm: PyVec<'py>) -> pyo3::prelude::PyResult<()> {

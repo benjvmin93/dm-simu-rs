@@ -25,7 +25,23 @@ pub struct DensityMatrix {
 
 impl fmt::Display for DensityMatrix {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.print(f)
+        write!(f, "[")?;
+        for i in 0..self.size {
+            write!(f, "[")?;
+            for j in 0..self.size {
+                let indices = bitwise_int_to_bin_vec(i * self.size + j, 2 * self.nqubits);
+                write!(f, "{}", self.tensor.get(&indices))?;
+                if j != self.size - 1 {
+                    write!(f, ", ")?;
+                }
+            }
+            write!(f, "]")?;
+            if i == self.size - 1 {
+                write!(f, "]")?;
+            }
+            writeln!(f, "")?;
+        }
+        writeln!(f, "\n")
     }
 }
 
@@ -93,26 +109,6 @@ impl DensityMatrix {
                 nqubits,
             })
         }
-    }
-
-    pub fn print(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "[")?;
-        for i in 0..self.size {
-            write!(f, "[")?;
-            for j in 0..self.size {
-                let indices = bitwise_int_to_bin_vec(i * self.size + j, 2 * self.nqubits);
-                write!(f, "{}", self.tensor.get(&indices))?;
-                if j != self.size - 1 {
-                    write!(f, ", ")?;
-                }
-            }
-            write!(f, "]")?;
-            if i == self.size - 1 {
-                write!(f, "]")?;
-            }
-            writeln!(f, "")?;
-        }
-        writeln!(f, "\n")
     }
 
     // Access element at row i and column j
@@ -267,9 +263,11 @@ impl DensityMatrix {
         }
     }
 
-    pub fn tensor(&mut self, other: &DensityMatrix) {
-        self.tensor = self.tensor.product(&other.tensor);
-        self.nqubits += other.nqubits;
+    pub fn tensor(&self, other: &DensityMatrix) -> DensityMatrix {
+        let new_tensor = self.tensor.product(&other.tensor).unwrap();
+        let new_nqubits = self.nqubits + other.nqubits;
+
+        DensityMatrix { tensor: new_tensor, size: 2_u32.pow(new_nqubits as u32) as usize, nqubits: new_nqubits }
     }
 
     pub fn ptrace(&mut self, qargs: &[usize]) -> Result<(), &str> {

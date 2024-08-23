@@ -1475,4 +1475,90 @@ mod tests_dm {
             TOLERANCE
         ));
     }
+
+    #[test]
+    fn test_ptrace_7() {
+        let mut dm = DensityMatrix::new(3, State::PLUS);
+        dm.ptrace(&[1, 2]).unwrap();
+        let expected = vec![
+            Complex::new(0.5, 0.), Complex::new(0.5, 0.),
+            Complex::new(0.5, 0.), Complex::new(0.5, 0.)
+        ];
+        assert_eq!(dm.tensor.data, expected);
+    }
+
+    #[test]
+    fn test_kron_simple() {
+        let mut dm_1 = DensityMatrix::new(1, State::ZERO);
+        let dm_2 = DensityMatrix::new(1, State::ZERO);
+        println!("dm1 = {}", dm_1);
+        println!("dm2 = {}", dm_2);
+
+        let res_dm = dm_1.tensor(&dm_2);
+        println!("res = {}", res_dm);
+        assert_eq!(res_dm.nqubits, 2);
+        assert_eq!(res_dm.tensor.shape, vec![2, 2, 2, 2]);
+        assert_eq!(res_dm.tensor.data, vec![
+            Complex::ONE, Complex::ZERO, Complex::ZERO, Complex::ZERO,
+            Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO,
+            Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO,
+            Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO,
+        ]);
+    }
+
+    #[test]
+    fn test_kron_different_size() {
+        let mut dm_1 = DensityMatrix::new(0, State::ZERO);
+        let dm_2 = DensityMatrix::new(4, State::ZERO);
+
+        let res_dm = dm_1.tensor(&dm_2);
+        println!("{}", res_dm);
+        assert_eq!(res_dm.nqubits, 4);
+        assert_eq!(res_dm.tensor.shape, vec![2, 2, 2, 2, 2, 2, 2, 2]);
+        let size = 2_u32.pow(res_dm.nqubits as u32);
+        assert_eq!(res_dm.tensor.data[0], Complex::ONE);
+        for i in 1..(size * size) {
+            assert_eq!(res_dm.tensor.data[i as usize], Complex::ZERO);
+        }
+    }
+
+    #[test]
+    fn test_kron_different_states() {
+        let dm_1 = DensityMatrix::new(1, State::ZERO);
+        let dm_2 = DensityMatrix::new(2, State::PLUS);
+        println!("dm1 = {}", dm_1);
+        println!("dm2 = {}", dm_2);
+        let res_dm = dm_1.tensor(&dm_2);
+        println!("{}", res_dm);
+        assert_eq!(res_dm.nqubits, 3);
+        assert_eq!(res_dm.tensor.shape, vec![2, 2, 2, 2, 2, 2]);
+        let size = 2_u32.pow(res_dm.nqubits as u32);
+        for i in 0..4 {
+            for j in 0..4 {
+                println!("i = {}, j = {}", i, j);
+                assert_eq!(res_dm.tensor.data[i as usize * size as usize + j as usize], Complex::new(0.25, 0.));
+            }
+        }
+        for i in 4..size {
+            for j in 4..size {
+                println!("i = {}, j = {}", i, j);
+                assert_eq!(res_dm.tensor.data[i as usize * size as usize + j as usize], Complex::ZERO);
+            }
+        }
+    }
+
+    #[test]
+    fn test_kron_plus_plus() {
+        let dm_1 = DensityMatrix::new(1, State::PLUS);
+        let dm_2 = DensityMatrix::new(1, State::PLUS);
+        println!("dm1 = {}", dm_1);
+        println!("dm2 = {}", dm_2);
+        let res_dm = dm_1.tensor(&dm_2);
+        println!("res = {}", res_dm);
+        assert_eq!(res_dm.nqubits, 2);
+        assert_eq!(res_dm.tensor.shape, vec![2, 2, 2, 2]);
+        for &data in res_dm.tensor.data.iter() {
+            assert_eq!(data, Complex::new(0.25, 0.));
+        }
+    }
 }

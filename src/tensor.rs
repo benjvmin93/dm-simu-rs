@@ -1,5 +1,6 @@
+use num_traits::ToPrimitive;
 use core::fmt;
-use num_traits::{One, Zero};
+use num_traits::Zero;
 use rayon::prelude::*;
 use std::ops::{Add, AddAssign, Mul};
 
@@ -11,7 +12,7 @@ pub struct Tensor<T> {
 
 impl<T> Tensor<T>
 where
-    T: Zero + Clone + Mul<Output = T> + Add<Output = T> + AddAssign + Sized,
+    T: Zero + Clone + Mul<Output = T> + Add<Output = T> + AddAssign + Sized + std::fmt::Debug,
 {
     // Initialize a new tensor with given shape
     pub fn new(shape: &[usize]) -> Self {
@@ -115,11 +116,38 @@ where
         result
     }
 
+    pub fn size(&self) -> usize {
+        self.shape.iter().product()
+    }
+    
     // Method to compute the tensor product of two tensors
-    pub fn product(&self, other: &Tensor<T>) -> Tensor<T>
+    pub fn product(&self, other: &Tensor<T>) -> Result<Tensor<T>, String>
     where
         T: Copy + Send + Sync + Sized + std::ops::Mul<Output = T>,
     {
+
+        // Only works for 2^n sized squared matrix.
+        let self_size: usize = self.size();
+        let other_size: usize = other.size();
+
+        if self_size & self_size - 1 != 0 {
+            return Err("Self tensor is not a power of two matrix".to_string());
+        } else if other_size & other_size - 1 != 0 {
+            return Err("Other tensor is not a power of two matrix".to_string());
+        }
+
+        let self_cols = (self_size as f64).sqrt();
+        let other_cols = (other_size as f64).sqrt();
+
+        // println!("self_cols : {}", self_cols);
+        // println!("other_cols : {}", other_cols);
+        if self_cols.to_isize() == None {
+            return Err("Self tensor is not a squared matrix".to_string());
+        } else if other_cols.to_isize() == None {
+            return Err("Other tensor is not a squared matrix".to_string());
+        }
+
+
         // Calculate the shape of the resulting tensor
         let new_shape: Vec<usize> = self
             .shape
@@ -128,14 +156,54 @@ where
             .cloned()
             .collect();
 
+        println!("tensor product: new_shape = {:?}", new_shape);
+
+        let mut new_data = vec![T::zero(); self_size * other_size];
+        let new_data_size = (new_data.len() as f64).sqrt();
+
+        let self_cols = self_cols as usize;
+        let other_cols = other_cols as usize;
+        self.data.clone().into_iter().enumerate().for_each(|(i, x)| {
+            // Compute (i, j) coef of self_data
+            let self_indices = (i / self_cols, i % self_cols);
+            // println!("self_mat_idx() for {} : {:?}\n==================", i, self_indices);
+            for (j, &y) in other.data.iter().enumerate() {
+                // Compute (i, j) coef of other_data
+                let other_indices = (j / other_cols, j % other_cols);
+                // println!("other_mat_idx for {} : {:?}", j, other_indices);
+                
+                let data_i = self_indices.0 * other_cols + other_indices.0;
+                let data_j = self_indices.1 * other_cols + other_indices.1;
+                let data_idx = data_i * new_data_size as usize + data_j;
+                
+                // println!("new_data idx : {}", data_idx);
+
+                new_data[data_idx] = x * y;
+            }
+        });
+
         // Calculate the data of the resulting tensor
-        let new_data: Vec<T> = self
-            .data
-            .par_iter()
-            .map(|&x| other.data.par_iter().map(move |&y| x * y))
-            .flatten()
-            .collect();
-        Tensor::from_vec(new_data, new_shape)
+        // Trying to compute it with Rust methods but doesn't validate all test suite
+        /*
+        let new_data_size = self_size * other_size;
+        let self_cols = self_cols as usize;
+        let other_cols = other_cols as usize;
+
+        println!("tensor product: new_data size = {}", new_data_size);
+        let new_data = (0..new_data_size).into_par_iter().map(|i| {
+            let data_i = i / new_data_size;
+            let data_j = i % new_data_size;
+
+            let self_indices = (data_i / other_cols, data_j / other_cols);
+            let other_indices = (data_i % other_cols, data_j % other_cols);
+
+            let self_idx = self_indices.0 * self_cols;
+            let other_idx = other_indices.0 * other_cols;
+
+            self.data[self_idx] * other.data[other_idx]
+        }).collect();*/
+
+        Ok(Tensor::from_vec(new_data, new_shape))
     }
 
     pub fn tensordot(
@@ -219,7 +287,7 @@ where
                             }
                         }
                         indices
-                    };
+                    }; 
 
                     let other_full_indices: Vec<_> = {
                         let mut indices = vec![0; other.shape.len()];
@@ -266,24 +334,21 @@ where
 
     // Helper function to unravel a flat index to a multidimensional index
     fn unravel_index(index: usize, shape: &[usize]) -> Vec<usize> {
-        let mut idx = index;
         let mut indices = vec![0; shape.len()];
+        let mut remainder = index;
         for i in (0..shape.len()).rev() {
-            indices[i] = idx % shape[i];
-            idx /= shape[i];
+            indices[i] = remainder % shape[i];
+            remainder /= shape[i];
         }
         indices
     }
 
     // Helper function to ravel a multidimensional index to a flat index
     fn ravel_index(indices: &[usize], shape: &[usize]) -> usize {
-        let mut index = 0;
-        let mut factor = 1;
-        for (i, &dim) in shape.iter().enumerate().rev() {
-            index += indices[i] * factor;
-            factor *= dim;
-        }
-        index
+        indices
+            .iter()
+            .zip(shape.iter())
+            .fold(0, |acc, (index, dim)| acc * dim + index)
     }
 
     pub fn transpose(&self, axes: &[usize]) -> Result<Tensor<T>, &str> {
