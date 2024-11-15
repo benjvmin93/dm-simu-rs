@@ -26,10 +26,10 @@ mod tests_tensor {
         tensor.set(&[1, 1], Complex::new(4.0, 0.0));
 
         // Get elements
-        assert_eq!(tensor.get(&[0, 0]), Complex::new(1.0, 0.0));
-        assert_eq!(tensor.get(&[0, 1]), Complex::new(2.0, 0.0));
-        assert_eq!(tensor.get(&[1, 0]), Complex::new(3.0, 0.));
-        assert_eq!(tensor.get(&[1, 1]), Complex::new(4.0, 0.0));
+        assert_eq!(*tensor.get(&[0, 0]), Complex::new(1.0, 0.0));
+        assert_eq!(*tensor.get(&[0, 1]), Complex::new(2.0, 0.0));
+        assert_eq!(*tensor.get(&[1, 0]), Complex::new(3.0, 0.));
+        assert_eq!(*tensor.get(&[1, 1]), Complex::new(4.0, 0.0));
     }
 
     #[test]
@@ -65,7 +65,7 @@ mod tests_tensor {
     }
 
     #[test]
-    fn test_tensor_product() {
+    fn test_tensor_product_1() {
         // Create the first tensor: [1, 2, 3]
         let tensor1 = Tensor::from_vec(&vec![Complex::new(1., 0.), Complex::new(2., 0.), Complex::new(3., 0.)], &vec![3]);
 
@@ -74,13 +74,75 @@ mod tests_tensor {
 
         // Calculate the tensor product
         
-        let result_tensor = tensor1.tensor_product(&tensor2);
+        let result_tensor = tensor1.product(&tensor2);
 
         // Expected result:
         // Shape: [3, 2]
         // Data: [1*4, 1*5, 2*4, 2*5, 3*4, 3*5] => [4, 5, 8, 10, 12, 15]
-        assert_eq!(result_tensor.shape, vec![3, 2]);
+        assert_eq!(result_tensor.shape.iter().product::<usize>(), 6);
         assert_eq!(result_tensor.data, vec![Complex::new(4., 0.), Complex::new(5., 0.), Complex::new(8., 0.),  Complex::new(10., 0.), Complex::new(12., 0.), Complex::new(15., 0.)]);
+    }
+
+    #[test]
+    fn test_tensor_product_2() {
+        // Create the first tensor: [1, 0]
+        let tensor1 = Tensor::from_vec(&vec![Complex::new(1., 0.), Complex::new(0., 0.)], &vec![2]);
+
+        // Create the second tensor: [1, 0]
+        let tensor2 = Tensor::from_vec(&vec![Complex::new(1., 0.), Complex::new(0., 0.)], &vec![2]);
+
+        // Calculate the tensor product
+        
+        let result_tensor = tensor1.product(&tensor2);
+
+        // Expected result:
+        // Shape: [4]
+        // Data: [1*1, 1*0, 0*1, 0*0] => [1, 0, 0, 0]
+        assert_eq!(result_tensor.shape.iter().product::<usize>(), 4);
+        assert_eq!(result_tensor.data, vec![Complex::new(1., 0.), Complex::new(0., 0.), Complex::new(0., 0.),  Complex::new(0., 0.)]);
+    }
+
+    #[test]
+    fn test_tensor_product_3() {
+        // Create the first tensor: [1, 0]
+        let tensor1 = Tensor::from_vec(&vec![Complex::new(1., 0.), Complex::new(0., 0.)], &vec![2]);
+
+        // Create the second tensor: [0, 1]
+        let tensor2 = Tensor::from_vec(&vec![Complex::new(0., 0.), Complex::new(1., 0.)], &vec![2]);
+
+        // Calculate the tensor product
+        
+        let result_tensor = tensor1.product(&tensor2);
+
+        // Expected result:
+        // Shape: [4]
+        // Data: [1*0, 1*1, 0*0, 0*1] => [0, 1, 0, 0]
+        assert_eq!(result_tensor.shape.iter().product::<usize>(), 4);
+        assert_eq!(result_tensor.data, vec![Complex::new(0., 0.), Complex::new(1., 0.), Complex::new(0., 0.),  Complex::new(0., 0.)]);
+    }
+
+    #[test]
+    fn test_tensor_product_4() {
+        // Create the first tensor: [1, 0, 0, 0]
+        let tensor1 = Tensor::from_vec(&vec![Complex::new(1., 0.), Complex::new(0., 0.), Complex::new(0., 0.), Complex::new(0., 0.)], &vec![2, 2]);
+
+        // Create the second tensor: [0, 0, 0, 1]
+        let tensor2 = Tensor::from_vec(&vec![Complex::new(0., 0.), Complex::new(0., 0.), Complex::new(0., 0.), Complex::new(1., 0.)], &vec![2, 2]);
+
+        // Calculate the tensor product
+        
+        let result_tensor = tensor1.product(&tensor2);
+
+        // Expected result:
+        // Shape: [16]
+        // Data: [0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+        assert_eq!(result_tensor.shape.iter().product::<usize>(), 16);
+        assert_eq!(result_tensor.data, vec![
+            Complex::new(0., 0.), Complex::new(0., 0.), Complex::new(0., 0.),  Complex::new(0., 0.),
+            Complex::new(0., 0.), Complex::new(1., 0.), Complex::new(0., 0.),  Complex::new(0., 0.),
+            Complex::new(0., 0.), Complex::new(0., 0.), Complex::new(0., 0.),  Complex::new(0., 0.),
+            Complex::new(0., 0.), Complex::new(0., 0.), Complex::new(0., 0.),  Complex::new(0., 0.),
+        ]);
     }
 
     #[test]

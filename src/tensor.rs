@@ -71,9 +71,9 @@ where
     }
 
     // Access element at given indices
-    pub fn get(&self, indices: &[u8]) -> T {
+    pub fn get(&self, indices: &[u8]) -> &T {
         let index = self.get_index(indices);
-        self.data[index].clone()
+        &self.data[index]
     }
 
     // Set element at given indices
@@ -103,22 +103,42 @@ where
     }
 
     // Method to compute the tensor product of two tensors
-    pub fn tensor_product(&self, other: &Tensor<T>) -> Tensor<T> {
+    pub fn product(&self, other: &Tensor<T>) -> Tensor<T> 
+    where 
+        T: std::marker::Copy
+    {
         // Check if tensors are compatible for tensor product
         assert_eq!(self.data.len(), self.shape.iter().product());
         assert_eq!(other.data.len(), other.shape.iter().product());
 
         // Calculate the shape of the resulting tensor
-        let mut new_shape = self.shape.clone();
-        new_shape.extend(other.shape.iter().cloned());
+        let new_shape: Vec<usize> = self.shape.iter()
+            .zip(other.shape.iter())
+            .map(|(self_dim, other_dim)| self_dim * other_dim)
+            .collect();
 
-        // Calculate the data of the resulting tensor
-        let mut new_data = Vec::new();
-        for self_data in self.data.iter() {
-            for other_data in other.data.iter() {
-                new_data.push(self_data.clone() * other_data.clone());
+        let result_size = new_shape.iter().copied().product::<usize>();
+        let mut new_data = Vec::with_capacity(result_size);
+
+        for i in 0..result_size {
+            // Initialize arrays to store the indices in A and B
+            let mut a_indices: Vec<u8> = vec![0; self.shape.len()];
+            let mut b_indices: Vec<u8> = vec![0; other.shape.len()];
+    
+            let mut remaining_index  = i;
+    
+            // For each dimension, calculate the corresponding indices in A and B
+            for j in 0..self.shape.len() {
+                a_indices[j] = remaining_index as u8 / other.shape[j] as u8;  // Integer division
+                b_indices[j] = remaining_index as u8 % other.shape[j] as u8;  // Modulo operation
+                remaining_index /= other.shape[j];  // Update remaining index for the next dimension
             }
+    
+            // Print the index mapping
+            new_data.push(*self.get(&a_indices) * *other.get(&b_indices));
+            // println!("i={} -> (A indices: {:?}) x (B indices: {:?})", i, a_indices, b_indices);
         }
+
         Tensor {
             data: new_data,
             shape: new_shape,

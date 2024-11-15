@@ -111,7 +111,7 @@ impl DensityMatrix {
 
     // Access element at row i and column j
     pub fn get(&self, i: u8, j: u8) -> Complex<f64> {
-        self.data.get(&[i, j])
+        *self.data.get(&[i, j])
     }
 
     // Set element at row i and column j
@@ -212,7 +212,7 @@ impl DensityMatrix {
     }
 
     pub fn tensor(&mut self, other: &DensityMatrix) {
-        self.data = self.data.tensor_product(&other.data);
+        self.data = self.data.product(&other.data);
         self.nqubits += other.nqubits;
     }
 

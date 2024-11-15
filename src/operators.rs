@@ -114,7 +114,7 @@ impl Operator {
         for i in 0..size {
             for j in 0..size{
                 let indices = bitwise_int_to_bin_vec(i * size + j, 2 * self.nqubits);
-                result[j * size + i] = self.data.get(&indices);
+                result[j * size + i] = *self.data.get(&indices);
             }
         }
         Operator { nqubits: self.nqubits, data: Tensor::from_vec(&result, &self.data.shape) } 
