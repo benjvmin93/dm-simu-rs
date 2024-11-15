@@ -9,6 +9,45 @@ mod tests_dm {
     const TOLERANCE: f64 = 1e-15;
 
     #[test]
+    fn test_init_initial_state_zero() {
+        let rho = DensityMatrix::new(1, State::ZERO);
+        let expected_data = vec![
+            Complex::ONE, Complex::ZERO,
+            Complex::ZERO, Complex::ZERO
+        ];
+
+        assert_eq!(expected_data, rho.data.data);
+        assert_eq!(rho.nqubits, 1);
+        assert_eq!(rho.size, 2);
+    }
+
+    #[test]
+    fn test_init_initial_state_plus() {
+        let rho = DensityMatrix::new(1, State::PLUS);
+        let expected_data = vec![
+            Complex::new(0.5, 0.), Complex::new(0.5, 0.),
+            Complex::new(0.5, 0.), Complex::new(0.5, 0.)
+        ];
+
+        assert_eq!(expected_data, rho.data.data);
+        assert_eq!(rho.nqubits, 1);
+        assert_eq!(rho.size, 2);
+    }
+
+    #[test]
+    fn test_init_initial_state_one() {
+        let rho = DensityMatrix::new(1, State::ONE);
+        let expected_data = vec![
+            Complex::ZERO, Complex::ZERO,
+            Complex::ZERO, Complex::ONE 
+        ];
+
+        assert_eq!(expected_data, rho.data.data);
+        assert_eq!(rho.nqubits, 1);
+        assert_eq!(rho.size, 2);
+    }
+
+    #[test]
     fn test_init_from_statevec_ket_0() {
         let rho = DensityMatrix::from_statevec(&[Complex::ONE, Complex::ZERO]).unwrap();
         let expected_data = &[
@@ -90,7 +129,7 @@ mod tests_dm {
 
         let expected_data = &[Complex::new(1., 0.), Complex::new(0., 0.), Complex::new(0., 0.), Complex::new(0., 0.)];
         assert_eq!(rho.data.data, expected_data);
-    }
+    }   
     #[test]
     fn test_one_qubit_evolve_single_h() {
         let mut rho = DensityMatrix::new(1, State::ZERO);
@@ -458,5 +497,67 @@ mod tests_dm {
     fn test_evolve_similar_indices() {
         let mut rho = DensityMatrix::new(3, State::ZERO);
         rho.evolve(&Operator::two_qubits(TwoQubitsOp::CX), &[0, 0]).unwrap();
+    }
+
+    #[test]
+    fn test_kron_1_qubit_zero_state() {
+        let mut rho = DensityMatrix::new(1, State::ZERO);
+        let other = DensityMatrix::new(1, State::ZERO);
+        rho.tensor(&other);
+
+        let expected_data: Vec<Complex<f64>> = vec![
+            Complex::ONE, Complex::ZERO, Complex::ZERO, Complex::ZERO,
+            Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO,
+            Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO,
+            Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO
+        ];
+
+        assert_eq!(expected_data, rho.data.data);
+    }
+
+    #[test]
+    fn test_kron_multiple_qubits_zero_state() {
+        let mut rho = DensityMatrix::new(2, State::ZERO); // 2 qubits, |00⟩
+        let other = DensityMatrix::new(2, State::ZERO); // 2 qubits, |00⟩
+        rho.tensor(&other);
+
+        let mut expected_data: Vec<Complex<f64>> = vec![Complex::ZERO; 16 * 16];
+        expected_data[0] = Complex::ONE;
+
+        assert_eq!(expected_data, rho.data.data);
+    }
+
+    #[test]
+    fn test_kron_plus_state() {
+        let mut rho = DensityMatrix::new(1, State::PLUS); // 1 qubit, |+⟩ state
+        let other = DensityMatrix::new(1, State::PLUS); // 1 qubit, |+⟩ state
+        rho.tensor(&other);
+    
+        let expected_data: Vec<Complex<f64>> = vec![Complex::new(0.25, 0.); 16];
+    
+        assert_eq!(expected_data, rho.data.data);
+    }
+
+    #[test]
+    fn test_kron_zero_and_one_state() {
+        let mut rho = DensityMatrix::new(1, State::ZERO); // 1 qubit, |0⟩ state
+        let other = DensityMatrix::new(1, State::ONE); // 1 qubit, |1⟩ state
+        rho.tensor(&other);
+    
+        let mut expected_data: Vec<Complex<f64>> = vec![Complex::ZERO; 16];
+        expected_data[5] = Complex::ONE;
+    
+        assert_eq!(expected_data, rho.data.data);
+    }
+
+    #[test]
+    fn test_kron_two_qubits_plus_state() {
+        let mut rho = DensityMatrix::new(2, State::PLUS); // 2 qubits, |+⟩ state
+        let other = DensityMatrix::new(2, State::PLUS); // 2 qubits, |+⟩ state
+        rho.tensor(&other);
+    
+        let expected_data: Vec<Complex<f64>> = vec![Complex::new(0.0625, 0.); 16 * 16];
+    
+        assert_eq!(expected_data, rho.data.data);
     }
 }

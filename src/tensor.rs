@@ -1,6 +1,6 @@
 use core::fmt;
-use num_traits::{Zero, One};
-use std::ops::{Add, Mul, AddAssign};
+use num_traits::{One, Zero};
+use std::ops::{Add, AddAssign, Mul};
 
 use crate::tools::{bitwise_bin_vec_to_int, bitwise_int_to_bin_vec};
 
@@ -25,11 +25,14 @@ where
 
     // Initialize a new tensor from a given vector and a given shape.
     pub fn from_vec(vec: Vec<T>, shape: Vec<usize>) -> Self {
-        assert_eq!(vec.len(),  shape.iter().product(), "Vector length {} does not match the given tensor shape {:?}", vec.len(), shape);
-        Self {
-            data: vec,
+        assert_eq!(
+            vec.len(),
+            shape.iter().product(),
+            "Vector length {} does not match the given tensor shape {:?}",
+            vec.len(),
             shape
-        }
+        );
+        Self { data: vec, shape }
     }
 
     pub fn print(&self, f: &mut fmt::Formatter<'_>, shape: &[usize], data: &[T]) -> fmt::Result
@@ -56,7 +59,6 @@ where
             write!(f, "]")
         }
     }
-    
 
     // Get index with the given tensor indices
     pub fn get_index(&self, indices: &[u8]) -> usize {
@@ -103,16 +105,18 @@ where
     }
 
     // Method to compute the tensor product of two tensors
-    pub fn product(&self, other: &Tensor<T>) -> Tensor<T> 
-    where 
-        T: std::marker::Copy
+    pub fn product(&self, other: &Tensor<T>) -> Tensor<T>
+    where
+        T: std::marker::Copy,
     {
         // Check if tensors are compatible for tensor product
         assert_eq!(self.data.len(), self.shape.iter().product());
         assert_eq!(other.data.len(), other.shape.iter().product());
 
         // Calculate the shape of the resulting tensor
-        let new_shape: Vec<usize> = self.shape.iter()
+        let new_shape: Vec<usize> = self
+            .shape
+            .iter()
             .zip(other.shape.iter())
             .map(|(self_dim, other_dim)| self_dim * other_dim)
             .collect();
@@ -124,19 +128,22 @@ where
             // Initialize arrays to store the indices in A and B
             let mut a_indices: Vec<u8> = vec![0; self.shape.len()];
             let mut b_indices: Vec<u8> = vec![0; other.shape.len()];
-    
-            let mut remaining_index  = i;
-    
+
+            let mut remaining_index = i;
+
             // For each dimension, calculate the corresponding indices in A and B
             for j in 0..self.shape.len() {
-                a_indices[j] = remaining_index as u8 / other.shape[j] as u8;  // Integer division
-                b_indices[j] = remaining_index as u8 % other.shape[j] as u8;  // Modulo operation
-                remaining_index /= other.shape[j];  // Update remaining index for the next dimension
+                a_indices[j] = remaining_index as u8 / other.shape[j] as u8; // Integer division
+                b_indices[j] = remaining_index as u8 % other.shape[j] as u8; // Modulo operation
+                remaining_index /= other.shape[j]; // Update remaining index for the next dimension
             }
-    
+
             // Print the index mapping
             new_data.push(*self.get(&a_indices) * *other.get(&b_indices));
-            // println!("i={} -> (A indices: {:?}) x (B indices: {:?})", i, a_indices, b_indices);
+            println!(
+                "i={} -> (A indices: {:?}) x (B indices: {:?})",
+                i, a_indices, b_indices
+            );
         }
 
         Tensor {
@@ -145,11 +152,15 @@ where
         }
     }
 
-    pub fn tensordot(&self, other: &Tensor<T>, axes: (&[usize], &[usize])) -> Result<Tensor<T>, &str> {
+    pub fn tensordot(
+        &self,
+        other: &Tensor<T>,
+        axes: (&[usize], &[usize]),
+    ) -> Result<Tensor<T>, &str> {
         if axes.0.len() != axes.1.len() {
             return Err("Axes dimensions must match");
         }
-        
+
         let mut new_shape_self = self.shape.clone();
         let mut new_shape_other = other.shape.clone();
 
@@ -172,7 +183,7 @@ where
         }
 
         new_shape_self.extend(new_shape_other);
-        
+
         let result_shape = new_shape_self;
         let result_data = vec![T::zero(); result_shape.iter().product()];
         let mut result = Tensor::from_vec(result_data, result_shape.clone());
@@ -180,17 +191,22 @@ where
         for (i, value_self) in self.data.iter().enumerate() {
             let indices_self = Self::unravel_index(i, &self.shape);
             let indices_common: Vec<_> = axes.0.iter().map(|&axis| indices_self[axis]).collect();
-            let indices_self_reduced: Vec<_> = indices_self.iter().enumerate()
+            let indices_self_reduced: Vec<_> = indices_self
+                .iter()
+                .enumerate()
                 .filter(|&(idx, _)| !axes.0.contains(&idx))
                 .map(|(_, &val)| val)
                 .collect();
 
             for (j, value_other) in other.data.iter().enumerate() {
                 let indices_other = Self::unravel_index(j, &other.shape);
-                let indices_common_other: Vec<_> = axes.1.iter().map(|&axis| indices_other[axis]).collect();
+                let indices_common_other: Vec<_> =
+                    axes.1.iter().map(|&axis| indices_other[axis]).collect();
 
                 if indices_common == indices_common_other {
-                    let indices_other_reduces: Vec<_> = indices_other.iter().enumerate()
+                    let indices_other_reduces: Vec<_> = indices_other
+                        .iter()
+                        .enumerate()
                         .filter(|&(idx, _)| !axes.1.contains(&idx))
                         .map(|(_, &val)| val)
                         .collect();
@@ -230,7 +246,7 @@ where
     pub fn transpose(&self, axes: &[usize]) -> Result<Tensor<T>, &str> {
         let new_shape: Vec<usize>;
         let new_axes: Vec<usize>;
-    
+
         if axes.is_empty() {
             // If axes are not provided, reverse the shape and create corresponding axes
             new_shape = self.shape.iter().rev().cloned().collect();
@@ -242,7 +258,7 @@ where
             new_shape = axes.iter().map(|&axis| self.shape[axis]).collect();
             new_axes = axes.to_vec();
         }
- 
+
         let mut new_data = vec![T::zero(); self.data.len()];
 
         let mut old_indices = vec![0; self.shape.len()];
@@ -298,13 +314,9 @@ where
             }
         };
 
-        let source: Vec<usize> = source.iter()
-            .map(|&x| convert_index(x))
-            .collect();
-        let dest: Vec<usize> = dest.iter()
-            .map(|&x| convert_index(x))
-            .collect();
-        
+        let source: Vec<usize> = source.iter().map(|&x| convert_index(x)).collect();
+        let dest: Vec<usize> = dest.iter().map(|&x| convert_index(x)).collect();
+
         let mut order: Vec<usize> = (0..ndim).collect();
 
         // Remove the source indices from the order, starting from the highest index to avoid reindexing issues
@@ -316,7 +328,11 @@ where
 
         // Insert the source indices at the destination positions, starting from the lowest index
         let mut temp_dest = dest.clone();
-        let mut temp_pairs: Vec<(usize, usize)> = temp_dest.iter().cloned().zip(source.iter().cloned()).collect();
+        let mut temp_pairs: Vec<(usize, usize)> = temp_dest
+            .iter()
+            .cloned()
+            .zip(source.iter().cloned())
+            .collect();
         temp_pairs.sort_by(|a, b| a.0.cmp(&b.0));
         for &(dst, src) in &temp_pairs {
             order.insert(dst, src);
@@ -327,7 +343,7 @@ where
 
 impl<T> fmt::Display for Tensor<T>
 where
-    T: fmt::Debug + Clone + Add<Output = T> + Mul<Output = T> + AddAssign + Zero
+    T: fmt::Debug + Clone + Add<Output = T> + Mul<Output = T> + AddAssign + Zero,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "array(")?;
