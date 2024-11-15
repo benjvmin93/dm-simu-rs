@@ -4,7 +4,7 @@ use std::collections::HashSet;
 
 pub struct DisplayComplex(pub Complex<f64>);
 
-impl fmt::Display for DisplayComplex {    
+impl fmt::Display for DisplayComplex {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let sign = {
             if self.0.im < 0. {

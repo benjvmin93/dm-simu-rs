@@ -1,12 +1,12 @@
-pub mod tensor;
 pub mod density_matrix;
 pub mod operators;
+pub mod tensor;
 pub mod tools;
 
-use num_complex::Complex;
-use pyo3::prelude::*;
 use density_matrix::{DensityMatrix, State};
+use num_complex::Complex;
 use operators::Operator;
+use pyo3::prelude::*;
 
 #[pyo3::pymodule]
 fn dm_simu_rs<'py>(
@@ -110,7 +110,12 @@ fn dm_simu_rs<'py>(
     m.add_function(pyo3::wrap_pyfunction!(get_nqubits, m)?)?;
 
     #[pyo3::pyfunction]
-    fn evolve_single<'py>(py: pyo3::prelude::Python<'py>, py_dm: PyVec<'py>, py_op: PyVec<'py>, qubit: usize) -> pyo3::prelude::PyResult<()> {
+    fn evolve_single<'py>(
+        py: pyo3::prelude::Python<'py>,
+        py_dm: PyVec<'py>,
+        py_op: PyVec<'py>,
+        qubit: usize,
+    ) -> pyo3::prelude::PyResult<()> {
         let dm = get_dm_mut_ref(py_dm);
         let op = get_op_ref(py_op);
         Ok(dm.evolve_single(op, qubit).unwrap())
@@ -118,7 +123,12 @@ fn dm_simu_rs<'py>(
     m.add_function(pyo3::wrap_pyfunction!(evolve_single, m)?)?;
 
     #[pyo3::pyfunction]
-    fn evolve<'py>(py: pyo3::prelude::Python<'py>, py_dm: PyVec<'py>, py_op: PyVec<'py>, qubits: Vec<usize>) -> pyo3::prelude::PyResult<()> {
+    fn evolve<'py>(
+        py: pyo3::prelude::Python<'py>,
+        py_dm: PyVec<'py>,
+        py_op: PyVec<'py>,
+        qubits: Vec<usize>,
+    ) -> pyo3::prelude::PyResult<()> {
         let dm = get_dm_mut_ref(py_dm);
         let op = get_op_ref(py_op);
         Ok(dm.evolve(op, &qubits).unwrap())

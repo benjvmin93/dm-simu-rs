@@ -69,7 +69,7 @@ impl DensityMatrix {
                 // Generate the binary vector for |1>
                 let indices = bitwise_int_to_bin_vec((size * size) - 1, shape);
                 dm.data.set(&indices, Complex::ONE);
-                dm   
+                dm
             }
         }
     }
@@ -91,7 +91,7 @@ impl DensityMatrix {
         Ok(DensityMatrix {
             data: Tensor::from_vec(data, vec![2; 2 * nqubits]),
             size,
-            nqubits
+            nqubits,
         })
     }
 
@@ -103,7 +103,7 @@ impl DensityMatrix {
             Ok(DensityMatrix {
                 data: tensor,
                 size: 2_i32.pow(nqubits as u32) as usize,
-                nqubits
+                nqubits,
             })
         }
     }

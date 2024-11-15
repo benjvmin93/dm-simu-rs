@@ -2,7 +2,7 @@
 mod tests_operators {
     use std::f64::consts::FRAC_1_SQRT_2;
 
-    use dm_simu_rs::operators::{Operator, OneQubitOp, TwoQubitsOp};
+    use dm_simu_rs::operators::{OneQubitOp, Operator, TwoQubitsOp};
     use num_complex::Complex;
 
     #[test]
@@ -105,12 +105,15 @@ mod tests_operators {
     #[test]
     fn test_transconjugate_random_unitary() {
         let mut u = Operator::new(vec![
-            Complex::new(0.5, 0.5), Complex::new(0.5, -0.5),
-            Complex::new(0.5, -0.5), Complex::new(0.5, 0.5)
-        ]).unwrap();
+            Complex::new(0.5, 0.5),
+            Complex::new(0.5, -0.5),
+            Complex::new(0.5, -0.5),
+            Complex::new(0.5, 0.5),
+        ])
+        .unwrap();
         u = u.transconj();
         print!("{}", u);
-        assert_eq!(*u.data.get(&[0, 0]),  Complex::new(0.5, -0.5));
+        assert_eq!(*u.data.get(&[0, 0]), Complex::new(0.5, -0.5));
         assert_eq!(*u.data.get(&[0, 1]), Complex::new(0.5, 0.5));
         assert_eq!(*u.data.get(&[1, 0]), Complex::new(0.5, 0.5));
         assert_eq!(*u.data.get(&[1, 1]), Complex::new(0.5, -0.5));
