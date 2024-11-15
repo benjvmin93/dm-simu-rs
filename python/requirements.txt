@@ -1,0 +1,4 @@
+hypothesis
+numpy
+maturin
+pytest

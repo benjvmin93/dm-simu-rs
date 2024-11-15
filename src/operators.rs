@@ -19,6 +19,7 @@ pub enum TwoQubitsOp {
     SWAP
 }
 
+#[derive(Clone)]
 pub struct Operator {
     pub nqubits: usize,
     pub data: Tensor<Complex<f64>>
@@ -27,15 +28,6 @@ pub struct Operator {
 impl fmt::Display for Operator {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.data.print(f, &self.data.shape, &self.data.data)
-    }
-}
-
-impl Clone for Operator {
-    fn clone(&self) -> Operator {
-        Operator { 
-            nqubits: self.nqubits,
-            data: self.data.clone()
-        }
     }
 }
 
@@ -48,7 +40,7 @@ impl Operator {
         let nqubits = size.log2() as usize;
         let shape = vec![2; 2 * nqubits];
 
-        Ok(Operator { nqubits, data: Tensor::from_vec(&data.to_vec(), &shape) })
+        Ok(Operator { nqubits, data: Tensor::from_vec(data, shape) })
     }
 
     pub fn one_qubit(gate: OneQubitOp) -> Self {
@@ -73,7 +65,7 @@ impl Operator {
         }
         Self {
             nqubits,
-            data: Tensor::from_vec(&data, &[2, 2])
+            data: Tensor::from_vec(data, vec![2, 2])
         }
     }
 
@@ -81,15 +73,16 @@ impl Operator {
         let nqubits = 2;
         let mut data = vec![Complex::ZERO; 16];
         data[0 * 4 + 0] = Complex::ONE;
-        data[1 * 4 + 1] = Complex::ONE;
         match gate {
             TwoQubitsOp::CX => {
                 data[2 * 4 + 3] = Complex::ONE;
                 data[3 * 4 + 2] = Complex::ONE;
+                data[1 * 4 + 1] = Complex::ONE;
             },
             TwoQubitsOp::CZ => {
                 data[2 * 4 + 2] = Complex::ONE;
                 data[3 * 4 + 3] = Complex::new(-1., 0.);
+                data[1 * 4 + 1] = Complex::ONE;
             },
             TwoQubitsOp::SWAP => {
                 data[2 * 4 + 1] = Complex::ONE;
@@ -99,13 +92,13 @@ impl Operator {
         }
         Self {
             nqubits,
-            data: Tensor::from_vec(&data, &[2, 2, 2, 2])
+            data: Tensor::from_vec(data, vec![2, 2, 2, 2])
         }
     }
 
     pub fn conj(&self) -> Operator {
         let new_data = self.data.data.iter().map(|e| e.conj()).collect::<Vec<Complex<f64>>>();
-        Operator { nqubits: self.nqubits, data: Tensor::from_vec(&new_data, &self.data.shape) }
+        Operator { nqubits: self.nqubits, data: Tensor::from_vec(new_data, self.data.shape.clone()) }
     }
  
     pub fn transpose(&self) -> Operator {
@@ -117,7 +110,7 @@ impl Operator {
                 result[j * size + i] = *self.data.get(&indices);
             }
         }
-        Operator { nqubits: self.nqubits, data: Tensor::from_vec(&result, &self.data.shape) } 
+        Operator { nqubits: self.nqubits, data: Tensor::from_vec(result, self.data.shape.clone()) } 
     }
 
     pub fn transconj(&self) -> Operator {
@@ -129,6 +122,6 @@ impl Operator {
                 new_data[j * size + i] = self.data.get(&indices).conj();
             }
         }
-        Operator { nqubits: self.nqubits, data: Tensor::from_vec(&new_data, &self.data.shape) }        
+        Operator { nqubits: self.nqubits, data: Tensor::from_vec(new_data, self.data.shape.clone()) }        
     }
 }

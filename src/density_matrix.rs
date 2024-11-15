@@ -4,7 +4,7 @@ use num_complex::Complex;
 use tensor::Tensor;
 
 use crate::tensor;
-use crate::tools::{bitwise_int_to_bin_vec, complex_approx_eq};
+use crate::tools::{bitwise_int_to_bin_vec, complex_approx_eq, are_elements_unique};
 use crate::operators::{OneQubitOp, Operator, TwoQubitsOp};
 
 #[pyo3::pyclass]
@@ -35,7 +35,7 @@ impl DensityMatrix {
         match initial_state {
             State::PLUS => {  // Set density matrix to |+><+| \otimes n
                 let mut dm =  Self {
-                    data: Tensor::from_vec(&vec![Complex::ONE; size * size], &vec![2; shape]),
+                    data: Tensor::from_vec(vec![Complex::ONE; size * size], vec![2; shape]),
                     size,
                     nqubits
                 };
@@ -44,7 +44,7 @@ impl DensityMatrix {
             }
             State::ZERO => {  // Set density matrix to |0><0| \otimes n
                 let mut dm = Self {
-                    data: Tensor::from_vec(&vec![Complex::ZERO; size * size], &vec![2; shape]),
+                    data: Tensor::from_vec(vec![Complex::ZERO; size * size], vec![2; shape]),
                     size,
                     nqubits
                 };
@@ -62,15 +62,15 @@ impl DensityMatrix {
         }
         let nqubits = len.ilog2() as usize;
         let size = len;
-        let mut data = vec![Complex::ZERO; size * size];
-        
+        let mut data = Vec::with_capacity(size * size);
+
         for i in 0..size {
             for j in 0..size {
-                data[i * size + j] = statevec[i] * statevec[j].conj();
+                data.push(statevec[i] * statevec[j].conj());
             }
         }
         Ok(DensityMatrix {
-            data: Tensor::from_vec(&data, &vec![2; 2 * nqubits]),
+            data: Tensor::from_vec(data, vec![2; 2 * nqubits]),
             size,
             nqubits
         })
@@ -121,17 +121,6 @@ impl DensityMatrix {
         self.data.set(&indices, value);
     }
 
-    /* pub fn to_tensor(&self) -> Tensor {
-        let shape = vec![2; 2 * self.nqubits];
-        let mut tensor = Tensor::new(shape);
-        for i in 0..(self.size * self.size) {
-            let data = self.data[i];
-            let tensor_index = bitwise_int_to_bin_vec(i, self.nqubits * 2);
-            tensor.set(&tensor_index, data);
-        }
-        tensor
-    } */
-
     pub fn expectation_single(&self, op: OneQubitOp, index: usize) -> Result<Complex<f64>, &str> {
         if index >= self.nqubits {
             return Err("Wrong target qubit.");
@@ -163,39 +152,56 @@ impl DensityMatrix {
             .collect::<Vec<_>>();
     }
 
-    pub fn evolve_single(&mut self, op: &Operator, index: usize) {
+    pub fn evolve_single(&mut self, op: &Operator, index: usize) -> Result<(), String> {
+        if index >= self.nqubits {
+            return Err(format!("Target qubit {} is not in the range [0-{}].", index, self.nqubits));
+        }
+        if op.nqubits != 1 {
+            return Err(format!("Passed operator is not a one qubit operator."));
+        }
+
         self.data = op.data.tensordot(&self.data, (&[1], &[index])).unwrap();
-        self.data = self.data.tensordot(&Tensor::from_vec(&op.transconj().data.data, &[2, 2]), (&[index + self.nqubits], &[0])).unwrap();
+        self.data = self.data.tensordot(&Tensor::from_vec(op.transconj().data.data, vec![2, 2]), (&[index + self.nqubits], &[0])).unwrap();
         self.data = self.data.moveaxis(&[0, ((self.data.shape.len() - 1)).try_into().unwrap()], &[index.try_into().unwrap(), ((index + self.nqubits)).try_into().unwrap()]).unwrap();
+
+        Ok(())
     }
 
-    pub fn evolve(&mut self, op: &Operator, indices: &[usize]) {
-        let nqb_op = op.nqubits;
+    pub fn evolve(&mut self, op: &Operator, indices: &[usize]) -> Result<(), String> {
+        if !are_elements_unique(indices) {
+            return Err("Target qubits must be unique.".to_string());
+        }
+        for &i in indices.iter() {
+            if i >= self.nqubits {
+                return Err(format!("Target qubit {} is not in the range [0-{}].", i, self.nqubits));
+            }
+        }
 
-        self.data = op.data.tensordot(&self.data, (
-            &(0..indices.len())
-                .map(|i| nqb_op + i)
-                .collect::<Vec<usize>>(),
-            &indices
-        )).unwrap();
+        let nqb_op = op.nqubits;
+        let first_axe = (0..indices.len()).map(|i| nqb_op + i).collect::<Vec<usize>>();
+        let second_axe = indices;
+        self.data = op.data.tensordot(
+            &self.data, 
+            (&first_axe, &second_axe)).unwrap();
 
         let op_transconj = op.transconj();
-        self.data = self.data.tensordot(&op_transconj.data,(
-            (&indices.iter()
-                .map(|i| i + nqb_op)
-                .collect::<Vec<usize>>()),
-            (&(0..indices.len()).collect::<Vec<usize>>())
-        )).unwrap();
+        let first_axe = indices.iter().map(|i| i + self.nqubits).collect::<Vec<usize>>();
+        let second_axe = (0..indices.len()).collect::<Vec<usize>>();
+        self.data = self.data.tensordot(
+            &op_transconj.data,
+            (&first_axe, &second_axe)).unwrap();
 
         let moveaxis_src_first = (0..indices.len() as i32).collect::<Vec<i32>>();
         let moveaxis_src_second = (1..(indices.len() + 1) as i32).map(|i| -i).collect();
+        let src = [moveaxis_src_first, moveaxis_src_second].concat();
         
         let moveaxis_dest_first = indices.iter().map(|&i| i as i32).collect::<Vec<i32>>();
-        let moveaxis_dest_second = indices.iter().rev().map(|&i| i as i32 + nqb_op as i32).collect();
-        self.data = self.data.moveaxis(
-            &[moveaxis_src_first, moveaxis_src_second].concat(),
-            &[moveaxis_dest_first, moveaxis_dest_second].concat()
-        ).unwrap();
+        let moveaxis_dest_second = indices.iter().rev().map(|&i| i as i32 + self.nqubits as i32).collect();
+        let dst = [moveaxis_dest_first, moveaxis_dest_second].concat();
+
+        self.data = self.data.moveaxis(&src, &dst).unwrap();
+
+        Ok(())
     }
 
     pub fn equals(&self, other: DensityMatrix, tol: f64) -> bool {
