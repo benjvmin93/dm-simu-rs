@@ -86,10 +86,10 @@ mod tests_tensor {
     #[test]
     fn test_tensor_product_2() {
         // Create the first tensor: [1, 0]
-        let tensor1 = Tensor::from_vec(&vec![Complex::new(1., 0.), Complex::new(0., 0.)], &vec![2]);
+        let tensor1 = Tensor::from_vec(vec![Complex::new(1., 0.), Complex::new(0., 0.)], vec![2]);
 
         // Create the second tensor: [1, 0]
-        let tensor2 = Tensor::from_vec(&vec![Complex::new(1., 0.), Complex::new(0., 0.)], &vec![2]);
+        let tensor2 = Tensor::from_vec(vec![Complex::new(1., 0.), Complex::new(0., 0.)], vec![2]);
 
         // Calculate the tensor product
         
@@ -105,10 +105,10 @@ mod tests_tensor {
     #[test]
     fn test_tensor_product_3() {
         // Create the first tensor: [1, 0]
-        let tensor1 = Tensor::from_vec(&vec![Complex::new(1., 0.), Complex::new(0., 0.)], &vec![2]);
+        let tensor1 = Tensor::from_vec(vec![Complex::new(1., 0.), Complex::new(0., 0.)], vec![2]);
 
         // Create the second tensor: [0, 1]
-        let tensor2 = Tensor::from_vec(&vec![Complex::new(0., 0.), Complex::new(1., 0.)], &vec![2]);
+        let tensor2 = Tensor::from_vec(vec![Complex::new(0., 0.), Complex::new(1., 0.)], vec![2]);
 
         // Calculate the tensor product
         
@@ -124,10 +124,10 @@ mod tests_tensor {
     #[test]
     fn test_tensor_product_4() {
         // Create the first tensor: [1, 0, 0, 0]
-        let tensor1 = Tensor::from_vec(&vec![Complex::new(1., 0.), Complex::new(0., 0.), Complex::new(0., 0.), Complex::new(0., 0.)], &vec![2, 2]);
+        let tensor1 = Tensor::from_vec(vec![Complex::new(1., 0.), Complex::new(0., 0.), Complex::new(0., 0.), Complex::new(0., 0.)], vec![2, 2]);
 
         // Create the second tensor: [0, 0, 0, 1]
-        let tensor2 = Tensor::from_vec(&vec![Complex::new(0., 0.), Complex::new(0., 0.), Complex::new(0., 0.), Complex::new(1., 0.)], &vec![2, 2]);
+        let tensor2 = Tensor::from_vec(vec![Complex::new(0., 0.), Complex::new(0., 0.), Complex::new(0., 0.), Complex::new(1., 0.)], vec![2, 2]);
 
         // Calculate the tensor product
         
