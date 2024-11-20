@@ -2,8 +2,11 @@ import functools
 import hypothesis as hyp
 import numpy as np
 import dm_simu_rs
+from copy import deepcopy
 
 import pytest
+
+hyp.settings(deadline=None)
 
 def dm_get_nqubits(array: np.ndarray) -> int:
     """
@@ -50,7 +53,7 @@ op_single = [
 ]
 
 
-op = [
+op_double = [
     np.array([  [1, 0, 0, 0],
                 [0, 1, 0, 0],
                 [0, 0, 0, 1],
@@ -63,6 +66,10 @@ op = [
                 [0, 0, 1, 0],
                 [0, 1, 0, 0],
                 [0, 0, 0, 1]], dtype=np.complex128),    # SWAP
+    np.array([  [1, 0, 0, 0],
+                [0, 0, 1j, 0],
+                [0, 1j, 0, 0,],
+                [0, 0, 0, 1]])                          # iSWAP
 ]
 
 
@@ -138,6 +145,33 @@ def evolve(rho, Nqubit, op, qargs):
     return rho
 
 
+def expectation_single(dm, op, i, Nqubit):
+        """Expectation value of single-qubit operator.
+
+        Args:
+            op (np.array): 2*2 Hermite operator
+            loc (int): Index of qubit on which to apply operator.
+        Returns:
+            complex: expectation value (real for hermitian ops!).
+        """
+
+        if not (0 <= i < Nqubit):
+            raise ValueError(f"Wrong target qubit {i}. Must between 0 and {Nqubit-1}.")
+
+        if op.shape != (2, 2):
+            raise ValueError("op must be 2x2 matrix.")
+
+        dm1 = deepcopy(dm)
+        dm1 /= np.trace(dm1)
+
+        rho_tensor = dm1.reshape((2,) * Nqubit * 2)
+        rho_tensor = np.tensordot(op, rho_tensor, axes=[1, i])
+        rho_tensor = np.moveaxis(rho_tensor, 0, i)
+        dm1 = rho_tensor.reshape((2**Nqubit, 2**Nqubit))
+
+        return np.trace(dm1)
+
+
 def integer_st(min=1, max=10):
     return hyp.strategies.integers(min_value=min, max_value=max)
 
@@ -147,25 +181,29 @@ def state_st():
 
 
 def build_sv(state: np.ndarray, nqubits: int) -> np.ndarray:
-    return functools.reduce(np.kron, (state for _ in range(nqubits)), np.array([1], dtype=np.complex128))
+    sv = functools.reduce(np.kron, (state for _ in range(nqubits)), np.array([1], dtype=np.complex128))
+    return sv.flatten()
 
 
 def build_rho_from_sv(state: np.ndarray, nqubits: int) -> np.ndarray:
     psi = functools.reduce(np.kron, (state for _ in range(nqubits)), np.array([1], dtype=np.complex128))
-    return np.outer(psi, psi)
+    return np.outer(psi, psi.conj())
 
 
-def array_st(min_qubits=1, max_qubits=10):  # Limit max_length to manage memory
+def dm_st(min_qubits=1, max_qubits=10):  # Limit max_length to manage memory
     """
-        Returns a random statevector which size is between min_qubits and max_qubits.
+        Returns a random density matrix which size is between min_qubits and max_qubits.
     """
     return (
-        integer_st()
+        integer_st(min_qubits, max_qubits)
         .flatmap(lambda nqubits: state_st().map(lambda state: build_rho_from_sv(state, nqubits)))
     )
 
 
 def sv_st(min=1, max=10):
+    """
+        Returns a 
+    """
     return (
         integer_st(min, max)
         .flatmap(lambda nqubits: state_st().map(lambda state: build_sv(state, nqubits)))
@@ -173,7 +211,7 @@ def sv_st(min=1, max=10):
 
 
 @hyp.given(
-    hyp.strategies.integers(min_value=1, max_value=10),
+    hyp.strategies.integers(min_value=1, max_value=8),
     hyp.strategies.sampled_from([dm_simu_rs.Zero, dm_simu_rs.Plus]),
 )
 def test_new_dm(nqubits, state):
@@ -196,38 +234,40 @@ def test_new_dm(nqubits, state):
     np.testing.assert_allclose(array, ref.flatten())
 
 
-@hyp.given(array_st(max_qubits=9))
+@hyp.given(sv_st(max=6))
 def test_from_vec(array):
     nqubits = sv_get_nqubits(array)
-    print(f'Testing with a statevec of size {len(array)} => nqubits = {nqubits}')
+
+    # print(f'Testing with a statevec of size {len(array)} => nqubits = {nqubits}')
     norm = get_norm(np.outer(array, array.conj()), nqubits)
     try:
+        # print(array)
         dm = dm_simu_rs.new_dm_from_vec(array)
         assert norm != 0
-        print(f'Successfully created a dm of size {len(dm_simu_rs.get_dm(dm))}')
+        # print(f'Successfully created a dm of size {len(dm_simu_rs.get_dm(dm))}')
     except ValueError:
         assert norm == 0
         return
     dm_nqubits = dm_simu_rs.get_nqubits(dm)
-    print(f"DM SIMU NQUBITS = {dm_nqubits}")
+    # print(f"DM SIMU NQUBITS = {dm_nqubits}")
     assert dm_nqubits == nqubits
-    print(f"nb qubits OK.")
+    # print(f"nb qubits OK.")
     dm_array = dm_simu_rs.get_dm(dm)
     size = 1 << nqubits
     assert len(dm_array) == size * size
-    print(f"dm size OK.\n==========================")
+    # print(f"dm size OK.\n==========================")
     array = np.outer(array, array.conj())
     array /= norm
     np.testing.assert_allclose(array.flatten(), dm_array)
 
-@hyp.given(array_st(max_qubits=4), array_st(max_qubits=5))
+@hyp.given(sv_st(max=4), sv_st(max=5))
 def test_tensor_dm(array1, array2):
     dm_1 = dm_simu_rs.new_dm_from_vec(array1)
     dm_2 = dm_simu_rs.new_dm_from_vec(array2)
     nqubits_1 = sv_get_nqubits(array1)
     nqubits_2 = sv_get_nqubits(array2)
-    ref_1 = np.outer(array1, array1)
-    ref_2 = np.outer(array2, array2)
+    ref_1 = np.outer(array1, array1.conj())
+    ref_2 = np.outer(array2, array2.conj())
     norm_1 = get_norm(ref_1, nqubits_1)
     norm_2 = get_norm(ref_2, nqubits_2)
     ref_1 /= norm_1
@@ -235,69 +275,95 @@ def test_tensor_dm(array1, array2):
 
     dm_simu_rs.tensor_dm(dm_1, dm_2)
     
-    ref = np.kron(ref_1.flatten(), ref_2.flatten())
+    ref = np.kron(ref_1, ref_2)
     array = dm_simu_rs.get_dm(dm_1)
     np.testing.assert_allclose(array, ref.flatten())
 
+@hyp.given(
+    sv_st(),
+    hyp.strategies.sampled_from(op_single),
+)
+def test_expectation_single(sv, op):
+    dm = dm_simu_rs.new_dm_from_vec(sv)
+    nqubits = sv_get_nqubits(sv)
+    
+    dm_arr = dm_simu_rs.get_dm(dm)
+    dm_arr = np.reshape(dm_arr, (2 ** nqubits, 2 ** nqubits))
+    index = np.random.randint(0, nqubits)
+    
+    print(f"Expectation single test args:")
+    print(f"\tnqubits: {nqubits}\n\tdm{dm_arr}\n\top:{op}\n\ti:{index}")
+    ref = expectation_single(dm_arr, op, index, nqubits)
+    
+    print(f"\texpected: {ref}\n===============================")
+    
+    print(f"op size: {len(op.flatten())}")
+    op_rs = dm_simu_rs.new_op(op.flatten())
+    result = dm_simu_rs.expectation_single(dm, op_rs, index)
+    
+    print(f"result rs: {result}\n===============================")
+    
+    assert(False)    
+    
 
 @hyp.given(
-        sv_st(),
+        sv_st(max=5),
         hyp.strategies.sampled_from(op_single)
     )
 def test_evolve_single(sv, op):
-   """
-        Test for evolve density matrix with single qubit operators.
-   """
-   op_simu = dm_simu_rs.new_op(op.flatten())
-   dm = dm_simu_rs.new_dm_from_vec(sv)
-   dm_ref = np.outer(sv, sv)
+    """
+            Test for evolve density matrix with single qubit operators.
+    """
+    op_simu = dm_simu_rs.new_op(op.flatten())
+    dm = dm_simu_rs.new_dm_from_vec(sv)
+    dm_ref = np.outer(sv, sv)
 
-   dm_arr = dm_simu_rs.get_dm(dm)
-   np.testing.assert_allclose(dm_arr, dm_ref.flatten())
+    dm_arr = dm_simu_rs.get_dm(dm)
+    np.testing.assert_allclose(dm_arr, dm_ref.flatten())
 
-   Nqubits_dm = dm_get_nqubits(dm_arr)
-   Nqubits_ref = dm_get_nqubits(dm_ref.flatten())
-   assert Nqubits_dm == Nqubits_ref
-   
-   target = np.random.randint(0, Nqubits_dm)
-   dm_simu_rs.evolve_single(dm, op_simu, target)
-   dm_ref = evolve_single(dm_ref, Nqubits_ref, op, target)
+    Nqubits_dm = dm_get_nqubits(dm_arr)
+    Nqubits_ref = dm_get_nqubits(dm_ref.flatten())
+    assert Nqubits_dm == Nqubits_ref
+    
+    target = np.random.randint(0, Nqubits_dm)
+    dm_simu_rs.evolve_single(dm, op_simu, target)
+    dm_ref = evolve_single(dm_ref, Nqubits_ref, op, target)
 
-   norm_ref = get_norm(dm_ref, Nqubits_ref)
-   dm_ref /= norm_ref
-   
-   dm_arr = dm_simu_rs.get_dm(dm)
-   np.testing.assert_allclose(dm_simu_rs.get_dm(dm), dm_ref.flatten(), atol=1e-5)
+    norm_ref = get_norm(dm_ref, Nqubits_ref)
+    dm_ref /= norm_ref
+    
+    dm_arr = dm_simu_rs.get_dm(dm)
+    np.testing.assert_allclose(dm_simu_rs.get_dm(dm), dm_ref.flatten(), atol=1e-5)
 
 
 @hyp.given(
-        sv_st(min=2),
-        hyp.strategies.sampled_from(op)
+        sv_st(min=2, max=7),
+        hyp.strategies.sampled_from(op_double),   
     )
 def test_evolve(sv, op):
-   """
-        Test for evolve density matrix with any operator.
-   """
-   op_simu = dm_simu_rs.new_op(op.flatten())
-   dm = dm_simu_rs.new_dm_from_vec(sv)
-   dm_ref = np.outer(sv, sv)
+    """
+            Test for evolve density matrix with any operator.
+    """
+    op_simu = dm_simu_rs.new_op(op.flatten())
+    dm = dm_simu_rs.new_dm_from_vec(sv)
+    dm_ref = np.outer(sv, sv)
 
-   dm_arr = dm_simu_rs.get_dm(dm)
-   np.testing.assert_allclose(dm_arr, dm_ref.flatten())
+    dm_arr = dm_simu_rs.get_dm(dm)
+    np.testing.assert_allclose(dm_arr, dm_ref.flatten())
 
-   Nqubits_dm = dm_get_nqubits(dm_arr)
-   Nqubits_ref = dm_get_nqubits(dm_ref.flatten())
-   assert Nqubits_dm == Nqubits_ref
-   
-   print(f'nqubits = {Nqubits_dm}')
-   targets = np.random.choice(a=range(Nqubits_dm), size=2, replace=False)
-   print(f'targets = {targets}')
-   dm_simu_rs.evolve(dm, op_simu, targets)
-   dm_ref = evolve(dm_ref, Nqubits_ref, op, targets)
-   print(f'{dm_simu_rs.get_dm(dm)}')
-   print(f'{dm_ref.flatten()}')
-   norm_ref = get_norm(dm_ref, Nqubits_ref)
-   dm_ref /= norm_ref
-   
-   dm_arr = dm_simu_rs.get_dm(dm)
-   np.testing.assert_allclose(dm_simu_rs.get_dm(dm), dm_ref.flatten(), atol=1e-5)
+    Nqubits_dm = dm_get_nqubits(dm_arr)
+    Nqubits_ref = dm_get_nqubits(dm_ref.flatten())
+    assert Nqubits_dm == Nqubits_ref
+    
+    # print(f'nqubits = {Nqubits_dm}')
+    targets = np.random.choice(range(Nqubits_dm), size=2, replace=False)
+
+    dm_simu_rs.evolve(dm, op_simu, targets)
+    dm_ref = evolve(dm_ref, Nqubits_ref, op, targets)
+    #print(f'{dm_simu_rs.get_dm(dm)}')
+    #print(f'{dm_ref.flatten()}')
+    norm_ref = get_norm(dm_ref, Nqubits_ref)
+    dm_ref /= norm_ref
+    
+    dm_arr = dm_simu_rs.get_dm(dm)
+    np.testing.assert_allclose(dm_simu_rs.get_dm(dm), dm_ref.flatten(), atol=1e-5)

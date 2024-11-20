@@ -6,7 +6,7 @@ pub mod tools;
 use density_matrix::{DensityMatrix, State};
 use num_complex::Complex;
 use operators::Operator;
-use pyo3::prelude::*;
+use pyo3::{prelude::*, types::{PyComplex}};
 
 #[pyo3::pymodule]
 fn dm_simu_rs<'py>(
@@ -86,7 +86,7 @@ fn dm_simu_rs<'py>(
     ) -> pyo3::prelude::PyResult<PyVec<'py>> {
         make_op_pyvec(
             py,
-            Operator::new(data.as_slice()?.to_vec())
+            Operator::new(data.as_slice()?)
                 .map_err(pyo3::exceptions::PyValueError::new_err)?,
         )
     }
@@ -156,6 +156,16 @@ fn dm_simu_rs<'py>(
         Ok(dm.tensor(other_dm))
     }
     m.add_function(pyo3::wrap_pyfunction!(tensor_dm, m)?)?;
+
+    #[pyo3::pyfunction]
+    fn expectation_single<'py>(py: pyo3::prelude::Python<'py>, dm: PyVec<'py>, op: PyVec<'py>, i: usize) -> pyo3::prelude::PyResult<pyo3::Bound<'py, PyComplex>> {
+        let dm = get_dm_mut_ref(dm);
+        let op = get_op_ref(op);
+        
+        let result = dm.expectation_single(op, i).unwrap();
+        Ok(PyComplex::from_doubles_bound(py, result.re, result.im))
+    }
+    m.add_function(pyo3::wrap_pyfunction!(expectation_single, m)?)?;
 
     Ok(())
 }
