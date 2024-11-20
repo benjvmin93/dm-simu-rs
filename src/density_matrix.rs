@@ -37,7 +37,7 @@ impl DensityMatrix {
             State::PLUS => {
                 // Set density matrix to |+><+| \otimes n
                 let mut dm = Self {
-                    data: Tensor::from_vec(vec![Complex::ONE; size * size], vec![2; shape]),
+                    data: Tensor::from_vec(&vec![Complex::ONE; size * size], vec![2; shape]),
                     size,
                     nqubits,
                 };
@@ -52,7 +52,7 @@ impl DensityMatrix {
             State::ZERO => {
                 // Set density matrix to |0><0| \otimes n
                 let mut dm = Self {
-                    data: Tensor::from_vec(vec![Complex::ZERO; size * size], vec![2; shape]),
+                    data: Tensor::from_vec(&vec![Complex::ZERO; size * size], vec![2; shape]),
                     size,
                     nqubits,
                 };
@@ -62,7 +62,7 @@ impl DensityMatrix {
             }
             State::ONE => {
                 let mut dm = Self {
-                    data: Tensor::from_vec(vec![Complex::ZERO; size * size], vec![2; shape]),
+                    data: Tensor::from_vec(&vec![Complex::ZERO; size * size], vec![2; shape]),
                     size,
                     nqubits,
                 };
@@ -89,23 +89,29 @@ impl DensityMatrix {
             }
         }
         Ok(DensityMatrix {
-            data: Tensor::from_vec(data, vec![2; 2 * nqubits]),
+            data: Tensor::from_vec(&data, vec![2; 2 * nqubits]),
             size,
             nqubits,
         })
     }
 
     pub fn from_tensor(tensor: Tensor<Complex<f64>>) -> Result<Self, &'static str> {
-        if tensor.shape.len() != 2 {
-            return Err("Tensor has not the right shape.");
-        } else {
-            let nqubits = tensor.shape.len() / 2;
-            Ok(DensityMatrix {
-                data: tensor,
-                size: 2_i32.pow(nqubits as u32) as usize,
-                nqubits,
-            })
+        let size: usize = tensor.shape.iter().product();
+        if !size.is_power_of_two() {
+            return Err("Tensor size is not a power of two.");
         }
+
+        let n = (size as f32).log2();
+        if n % 2.0 != 0. {
+            return Err("Tensor size is not valid. It should be of size 2^(2n) with n the number of qubits.")
+        }
+        let nqubits = (n / 2.) as usize;
+        
+        Ok(DensityMatrix {
+            data: tensor,
+            size: 2_i32.pow(nqubits as u32) as usize,
+            nqubits,
+        })
     }
 
     pub fn print(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -140,15 +146,16 @@ impl DensityMatrix {
         self.data.set(&indices, value);
     }
 
-    pub fn expectation_single(&self, op: OneQubitOp, index: usize) -> Result<Complex<f64>, &str> {
+    pub fn expectation_single(&self, op: &Operator, index: usize) -> Result<Complex<f64>, &str> {
         if index >= self.nqubits {
             return Err("Wrong target qubit.");
         }
 
-        let op_tensor = Operator::one_qubit(op);
+        assert!(op.data.data.len() == 4); // Make sure op is a 1 qubit operator
+
         let mut result_tensor = self
             .data
-            .tensordot(&op_tensor.data, (&[1], &[index]))
+            .tensordot(&op.data, (&[1], &[index]))
             .unwrap();
         result_tensor = result_tensor.moveaxis(&[0], &[index as i32]).unwrap();
         let dm_result = DensityMatrix::from_tensor(result_tensor).unwrap();
@@ -192,7 +199,7 @@ impl DensityMatrix {
         self.data = self
             .data
             .tensordot(
-                &Tensor::from_vec(op.transconj().data.data, vec![2, 2]),
+                &Tensor::from_vec(&op.transconj().data.data, vec![2, 2]),
                 (&[index + self.nqubits], &[0]),
             )
             .unwrap();
@@ -273,15 +280,17 @@ impl DensityMatrix {
             false
         }
     }
-
+    /*
+    ** Currently making a kronecker product by its own.
+    ** Would like to generalize it to the tensor struct with the tensor.product method.
+     */
     pub fn tensor(&mut self, other: &DensityMatrix) {
         // Update the number of qubits in `self`
         self.nqubits += other.nqubits;
 
         // Calculate the new size and shape for the resulting tensor
         let new_dim = self.size * other.size;
-        let new_shape = vec![new_dim, new_dim];
-        println!("new_shape = {:?}", new_shape);
+        let new_shape = vec![2; 2 * self.nqubits];
 
         // Create a new result tensor with the updated shape
         let mut result = Tensor::new(&new_shape);

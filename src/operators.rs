@@ -32,18 +32,24 @@ impl fmt::Display for Operator {
 }
 
 impl Operator {
-    pub fn new(data: Vec<Complex<f64>>) -> Result<Self, String> {
-        let size = (data.len() as f64).sqrt();
-        if !(size as usize).is_power_of_two() {
+    pub fn new(data: &[Complex<f64>]) -> Result<Self, String> {
+        let size = data.len();
+        if !size.is_power_of_two() {
             return Err(
                 "Operator should be a squared matrix with size 2^nqubits * 2^nqubits".to_string(),
             );
         }
-        let nqubits = size.log2() as usize;
-        let shape = vec![2; 2 * nqubits];
+        let n = (size as f32).log2() as usize;
+
+        if n % 2 != 0 {
+            return Err(
+                "Operator is not of the size 2^2n * 2^2n".to_string()
+            );
+        }
+        let shape = vec![2; n];
 
         Ok(Operator {
-            nqubits,
+            nqubits: n / 2,
             data: Tensor::from_vec(data, shape),
         })
     }
@@ -80,7 +86,7 @@ impl Operator {
         }
         Self {
             nqubits,
-            data: Tensor::from_vec(data, vec![2, 2]),
+            data: Tensor::from_vec(&data, vec![2, 2]),
         }
     }
 
@@ -107,7 +113,7 @@ impl Operator {
         }
         Self {
             nqubits,
-            data: Tensor::from_vec(data, vec![2, 2, 2, 2]),
+            data: Tensor::from_vec(&data, vec![2, 2, 2, 2]),
         }
     }
 
@@ -120,7 +126,7 @@ impl Operator {
             .collect::<Vec<Complex<f64>>>();
         Operator {
             nqubits: self.nqubits,
-            data: Tensor::from_vec(new_data, self.data.shape.clone()),
+            data: Tensor::from_vec(&new_data, self.data.shape.clone()),
         }
     }
 
@@ -135,7 +141,7 @@ impl Operator {
         }
         Operator {
             nqubits: self.nqubits,
-            data: Tensor::from_vec(result, self.data.shape.clone()),
+            data: Tensor::from_vec(&result, self.data.shape.clone()),
         }
     }
 
@@ -150,7 +156,7 @@ impl Operator {
         }
         Operator {
             nqubits: self.nqubits,
-            data: Tensor::from_vec(new_data, self.data.shape.clone()),
+            data: Tensor::from_vec(&new_data, self.data.shape.clone()),
         }
     }
 }

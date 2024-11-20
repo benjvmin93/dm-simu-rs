@@ -24,7 +24,7 @@ where
     }
 
     // Initialize a new tensor from a given vector and a given shape.
-    pub fn from_vec(vec: Vec<T>, shape: Vec<usize>) -> Self {
+    pub fn from_vec(vec: &[T], shape: Vec<usize>) -> Self {
         assert_eq!(
             vec.len(),
             shape.iter().product(),
@@ -32,7 +32,7 @@ where
             vec.len(),
             shape
         );
-        Self { data: vec, shape }
+        Self { data: vec.into(), shape }
     }
 
     pub fn print(&self, f: &mut fmt::Formatter<'_>, shape: &[usize], data: &[T]) -> fmt::Result
@@ -140,10 +140,6 @@ where
 
             // Print the index mapping
             new_data.push(*self.get(&a_indices) * *other.get(&b_indices));
-            println!(
-                "i={} -> (A indices: {:?}) x (B indices: {:?})",
-                i, a_indices, b_indices
-            );
         }
 
         Tensor {
@@ -186,7 +182,7 @@ where
 
         let result_shape = new_shape_self;
         let result_data = vec![T::zero(); result_shape.iter().product()];
-        let mut result = Tensor::from_vec(result_data, result_shape.clone());
+        let mut result = Tensor::from_vec(&result_data, result_shape.clone());
 
         for (i, value_self) in self.data.iter().enumerate() {
             let indices_self = Self::unravel_index(i, &self.shape);

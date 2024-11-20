@@ -104,7 +104,7 @@ mod tests_tensor {
     fn test_tensor_product_1() {
         // Create the first tensor: [1, 2, 3]
         let tensor1 = Tensor::from_vec(
-            vec![
+            &[
                 Complex::new(1., 0.),
                 Complex::new(2., 0.),
                 Complex::new(3., 0.),
@@ -113,7 +113,7 @@ mod tests_tensor {
         );
 
         // Create the second tensor: [4, 5]
-        let tensor2 = Tensor::from_vec(vec![Complex::new(4., 0.), Complex::new(5., 0.)], vec![2]);
+        let tensor2 = Tensor::from_vec(&[Complex::new(4., 0.), Complex::new(5., 0.)], vec![2]);
 
         // Calculate the tensor product
 
@@ -139,10 +139,10 @@ mod tests_tensor {
     #[test]
     fn test_tensor_product_2() {
         // Create the first tensor: [1, 0]
-        let tensor1 = Tensor::from_vec(vec![Complex::new(1., 0.), Complex::new(0., 0.)], vec![2]);
+        let tensor1 = Tensor::from_vec(&[Complex::new(1., 0.), Complex::new(0., 0.)], vec![2]);
 
         // Create the second tensor: [1, 0]
-        let tensor2 = Tensor::from_vec(vec![Complex::new(1., 0.), Complex::new(0., 0.)], vec![2]);
+        let tensor2 = Tensor::from_vec(&[Complex::new(1., 0.), Complex::new(0., 0.)], vec![2]);
 
         // Calculate the tensor product
 
@@ -166,10 +166,10 @@ mod tests_tensor {
     #[test]
     fn test_tensor_product_3() {
         // Create the first tensor: [1, 0]
-        let tensor1 = Tensor::from_vec(vec![Complex::new(1., 0.), Complex::new(0., 0.)], vec![2]);
+        let tensor1 = Tensor::from_vec(&[Complex::new(1., 0.), Complex::new(0., 0.)], vec![2]);
 
         // Create the second tensor: [0, 1]
-        let tensor2 = Tensor::from_vec(vec![Complex::new(0., 0.), Complex::new(1., 0.)], vec![2]);
+        let tensor2 = Tensor::from_vec(&[Complex::new(0., 0.), Complex::new(1., 0.)], vec![2]);
 
         // Calculate the tensor product
 
@@ -194,7 +194,7 @@ mod tests_tensor {
     fn test_tensor_product_4() {
         // Create the first tensor: [1, 0, 0, 0]
         let tensor1 = Tensor::from_vec(
-            vec![
+            &[
                 Complex::new(1., 0.),
                 Complex::new(0., 0.),
                 Complex::new(0., 0.),
@@ -205,7 +205,7 @@ mod tests_tensor {
 
         // Create the second tensor: [0, 0, 0, 1]
         let tensor2 = Tensor::from_vec(
-            vec![
+            &[
                 Complex::new(0., 0.),
                 Complex::new(0., 0.),
                 Complex::new(0., 0.),
@@ -248,7 +248,7 @@ mod tests_tensor {
     #[test]
     fn test_tensordot_basic_1() {
         // Tensor A (shape: [2, 2])
-        let a_data = vec![
+        let a_data = &[
             Complex::new(1., 0.),
             Complex::new(0., 0.),
             Complex::new(0., 0.),
@@ -256,7 +256,7 @@ mod tests_tensor {
         ];
 
         // Tensor B (shape: [2, 2])
-        let b_data = vec![
+        let b_data = &[
             Complex::new(1., 0.),
             Complex::new(0., 0.),
             Complex::new(0., 0.),
@@ -264,7 +264,7 @@ mod tests_tensor {
         ];
 
         // Expected tensor (shape: [2, 2])
-        let expected_data = vec![
+        let expected_data = &[
             Complex::new(1., 0.),
             Complex::new(0., 0.),
             Complex::new(0., 0.),
@@ -285,7 +285,7 @@ mod tests_tensor {
     #[test]
     fn test_tensordot_2D_2() {
         // Tensor A (shape: [2, 2])
-        let a_data = vec![
+        let a_data = &[
             Complex::new(1., 0.),
             Complex::new(2., 0.),
             Complex::new(3., 0.),
@@ -293,7 +293,7 @@ mod tests_tensor {
         ];
 
         // Tensor B (shape: [2, 2])
-        let b_data = vec![
+        let b_data = &[
             Complex::new(5., 0.),
             Complex::new(6., 0.),
             Complex::new(7., 0.),
@@ -301,7 +301,7 @@ mod tests_tensor {
         ];
 
         // Expected tensor (shape: [2, 2])
-        let expected_data = vec![
+        let expected_data = &[
             Complex::new(19., 0.),
             Complex::new(22., 0.),
             Complex::new(43., 0.),
@@ -322,7 +322,7 @@ mod tests_tensor {
     #[test]
     fn test_tensordot_different_shapes() {
         // Tensor A (shape: [2, 2])
-        let a_data = vec![
+        let a_data = &[
             Complex::new(1., 0.),
             Complex::new(2., 0.),
             Complex::new(3., 0.),
@@ -330,7 +330,7 @@ mod tests_tensor {
         ];
 
         // Tensor B (shape: [2, 2, 2, 2])
-        let b_data = vec![
+        let b_data = &[
             Complex::new(1.0, 0.0),
             Complex::new(2.0, 0.0),
             Complex::new(3.0, 0.0),
@@ -350,7 +350,7 @@ mod tests_tensor {
         ];
 
         // Expected tensor (shape: [2, 2, 2, 2])
-        let expected_data = vec![
+        let expected_data = &[
             Complex::new(19., 0.0),
             Complex::new(22.0, 0.0),
             Complex::new(25.0, 0.0),
@@ -380,8 +380,8 @@ mod tests_tensor {
 
     #[test]
     fn test_tensordot_3Dx2D_1() {
-        let t_a = Tensor::from_vec(vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], vec![2, 3, 2]);
-        let t_b = Tensor::from_vec(vec![13, 14, 15, 16, 17, 18], vec![3, 2]);
+        let t_a = Tensor::from_vec(&[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], vec![2, 3, 2]);
+        let t_b = Tensor::from_vec(&[13, 14, 15, 16, 17, 18], vec![3, 2]);
         let res = t_a.tensordot(&t_b, (&[1, 2], &[0, 1])).unwrap();
         assert_eq!(res.shape, vec![2]);
         assert_eq!(res.data, vec![343, 901]);
@@ -389,8 +389,8 @@ mod tests_tensor {
 
     #[test]
     fn test_tensordot_3Dx2D_2() {
-        let t_a = Tensor::from_vec(vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], vec![2, 3, 2]);
-        let t_b = Tensor::from_vec(vec![13, 14, 15, 16, 17, 18], vec![3, 2]);
+        let t_a = Tensor::from_vec(&[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], vec![2, 3, 2]);
+        let t_b = Tensor::from_vec(&[13, 14, 15, 16, 17, 18], vec![3, 2]);
         let res = t_a.tensordot(&t_b, (&[2, 1], &[1, 0])).unwrap();
         assert_eq!(res.shape, vec![2]);
         assert_eq!(res.data, vec![343, 901]);
@@ -398,8 +398,8 @@ mod tests_tensor {
 
     #[test]
     fn test_tensordot_2Dx3D_1() {
-        let t_a = Tensor::from_vec(vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], vec![2, 3, 2]);
-        let t_b = Tensor::from_vec(vec![13, 14, 15, 16, 17, 18], vec![3, 2]);
+        let t_a = Tensor::from_vec(&[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], vec![2, 3, 2]);
+        let t_b = Tensor::from_vec(&[13, 14, 15, 16, 17, 18], vec![3, 2]);
         let res = t_b.tensordot(&t_a, (&[0, 1], &[1, 2])).unwrap();
         assert_eq!(res.shape, vec![2]);
         assert_eq!(res.data, vec![343, 901]);
@@ -407,8 +407,8 @@ mod tests_tensor {
 
     #[test]
     fn test_tensordot_2Dx3D_2() {
-        let t_a = Tensor::from_vec(vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], vec![2, 3, 2]);
-        let t_b = Tensor::from_vec(vec![13, 14, 15, 16, 17, 18], vec![3, 2]);
+        let t_a = Tensor::from_vec(&[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], vec![2, 3, 2]);
+        let t_b = Tensor::from_vec(&[13, 14, 15, 16, 17, 18], vec![3, 2]);
         let res = t_b.tensordot(&t_a, (&[1, 0], &[2, 1])).unwrap();
         assert_eq!(res.shape, vec![2]);
         assert_eq!(res.data, vec![343, 901]);
@@ -418,7 +418,7 @@ mod tests_tensor {
     fn test_transpose_single_axis() {
         // Create a 1D tensor
         let tensor = Tensor::from_vec(
-            vec![
+            &[
                 Complex::new(1.0, 0.0),
                 Complex::new(2.0, 0.0),
                 Complex::new(3.0, 0.0),
@@ -440,7 +440,7 @@ mod tests_tensor {
     fn test_transpose_identity() {
         // Create a 2x3 tensor
         let tensor = Tensor::from_vec(
-            vec![
+            &[
                 Complex::new(1.0, 0.0),
                 Complex::new(2.0, 0.0),
                 Complex::new(3.0, 0.0),
@@ -465,7 +465,7 @@ mod tests_tensor {
     fn test_transpose_2d() {
         // Create a 2x3 tensor
         let tensor = Tensor::from_vec(
-            vec![
+            &[
                 Complex::new(1.0, 0.0),
                 Complex::new(2.0, 0.0),
                 Complex::new(3.0, 0.0),
@@ -500,7 +500,7 @@ mod tests_tensor {
     fn test_transpose_3d() {
         // Create a 2x3x4 tensor
         let tensor: Tensor<Complex<f64>> = Tensor::from_vec(
-            (0..24)
+            &(0..24)
                 .map(|x| Complex::new(x as f64, 0.0))
                 .collect::<Vec<Complex<f64>>>(),
             vec![2, 3, 4],
@@ -545,7 +545,7 @@ mod tests_tensor {
     #[test]
     fn test_transpose_4d() {
         // Create a 2x2x2x2 tensor
-        let vec = (0..16)
+        let vec = &(0..16)
             .map(|x| Complex::new(x as f64, 0.0))
             .collect::<Vec<Complex<f64>>>();
         let tensor = Tensor::from_vec(vec, vec![2, 2, 2, 2]);
@@ -580,7 +580,8 @@ mod tests_tensor {
 
     #[test]
     fn test_transpose_empty_axes() {
-        let tensor = Tensor::from_vec((0..6).collect(), vec![2, 3]);
+        let vec: Vec<i32> = (0..6).collect();
+        let tensor = Tensor::from_vec(&vec, vec![2, 3]);
 
         let transposed_tensor = tensor.transpose(&[]).unwrap();
         assert_eq!(transposed_tensor.shape, vec![3, 2]);
@@ -591,7 +592,8 @@ mod tests_tensor {
 
     #[test]
     fn test_transpose_3d_empty_axes() {
-        let tensor = Tensor::from_vec((0..24).collect(), vec![2, 3, 4]);
+        let vec: Vec<i32> = (0..24).collect();
+        let tensor = Tensor::from_vec(&vec, vec![2, 3, 4]);
 
         let transposed_tensor = tensor.transpose(&[]).unwrap();
         assert_eq!(transposed_tensor.shape, vec![4, 3, 2]);
@@ -605,7 +607,7 @@ mod tests_tensor {
     #[test]
     fn test_moveaxis_unchanged() {
         // Create a 2x2 tensor
-        let vec = (0..4)
+        let vec = &(0..4)
             .map(|x| Complex::new(x as f64, 0.))
             .collect::<Vec<Complex<f64>>>();
         let tensor = Tensor::from_vec(vec, vec![2, 2]);
@@ -626,7 +628,8 @@ mod tests_tensor {
     #[test]
     fn test_moveaxis_transpose() {
         // Create a 2x2 tensor
-        let tensor = Tensor::from_vec((0..4).collect(), vec![2, 2]);
+        let vec: Vec<i32> = (0..4).collect();
+        let tensor = Tensor::from_vec(&vec, vec![2, 2]);
 
         // Move axis (0, 1) to (1, 0) => Transpose tensor
         let new_tensor = tensor.moveaxis(&[0, 1], &[1, 0]).unwrap();
@@ -640,7 +643,7 @@ mod tests_tensor {
     fn test_moveaxis_4d_tensor() {
         // Create a 2x2x2x2 tensor
         let tensor = Tensor::from_vec(
-            (0..16)
+            &(0..16)
                 .map(|x| Complex::new(x as f64, 0.))
                 .collect::<Vec<Complex<f64>>>(),
             vec![2, 2, 2, 2],
@@ -744,7 +747,7 @@ mod tests_tensor {
     #[test]
     fn test_moveaxis_with_negative_indices_2() {
         let tensor = Tensor::from_vec(
-            vec![
+            &[
                 Complex::new(1.0, 0.0),
                 Complex::new(2.0, 0.0),
                 Complex::new(3.0, 0.0),
@@ -759,7 +762,7 @@ mod tests_tensor {
 
         let result = tensor.moveaxis(&[-1, -2], &[0, 1]).unwrap();
         let expected = Tensor::from_vec(
-            vec![
+            &[
                 Complex::new(1.0, 0.0),
                 Complex::new(5.0, 0.0),
                 Complex::new(3.0, 0.0),
