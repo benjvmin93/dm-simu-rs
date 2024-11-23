@@ -1,10 +1,12 @@
 #[cfg(test)]
 mod tests_dm {
+    use std::f64::consts::SQRT_2;
+
     use dm_simu_rs::density_matrix::{DensityMatrix, State};
     use dm_simu_rs::operators::{OneQubitOp, Operator, TwoQubitsOp};
     use dm_simu_rs::tensor::Tensor;
     use num_complex::Complex;
-    use num_traits::pow;
+    use num_traits::PrimInt;
 
     const TOLERANCE: f64 = 1e-15;
 
@@ -32,6 +34,43 @@ mod tests_dm {
         assert_eq!(rho.nqubits, 1);
         assert_eq!(rho.size, 2);
     }
+
+    #[test]
+    fn test_density_matrix_minus_state() {
+        let nqubits = 3; // Test with 3 qubits (can try with other numbers too)
+        let rho = DensityMatrix::new(nqubits, State::MINUS);
+        
+        println!("rho = {}", rho);
+        let size = 1 << nqubits; // 2^nqubits
+        let factor = 1.0 / (size as f64); // Normalization factor
+    
+        for i in 0..size {
+            for j in 0..size {
+                let expected_value = if (i ^ j).count_ones() % 2 == 0 {
+                    Complex::new(factor, 0.0)
+                } else {
+                    Complex::new(-factor, 0.0)
+                };
+            
+                let value = rho.get(i as u8, j as u8);
+                assert_eq!(
+                    expected_value, value,
+                    "Mismatch at indices ({}, {}): expected {:?}, got {:?}",
+                    i, j, expected_value, value
+                );
+            }
+        }
+    
+        // Ensure trace is 1
+        let trace = rho.trace();
+        assert_eq!(
+            trace,
+            Complex::new(1.0, 0.0),
+            "Trace of the density matrix should be 1, got {:?}",
+            trace
+        );
+    }
+
 
     #[test]
     fn test_init_initial_state_one() {
@@ -1368,10 +1407,103 @@ mod tests_dm {
     }
 
     #[test]
-    fn test_expectation_single() {
-        let rho = DensityMatrix::new(8, State::ZERO);
+    fn test_trace_pure_state() {
+        let pure_states = vec![State::ZERO, State::PLUS, State::ONE, State::MINUS];
+        for state in pure_states {
+            let _ = (1..16).into_iter().map(|n| {
+                let rho = DensityMatrix::new(n, state);
+                let expected: Complex<f64> = Complex::ONE;
+                let res = rho.trace();
+                assert_eq!(expected, res, "Failed for state {:?}, n = {}", state, n);
+            });
+        }
+    }
+
+    #[test]
+    fn test_expectation_single_1() {
+        let mut rho = DensityMatrix::new(1, State::ZERO);
         let expected = Complex::new(1., 0.);
-        let res = rho.expectation_single(&Operator::one_qubit(OneQubitOp::Z), 4).unwrap();
+        let res = rho.expectation_single(&Operator::one_qubit(OneQubitOp::Z), 0).unwrap();
+
+        assert_eq!(expected, res);
+    }
+    #[test]
+    fn test_expectation_single_2() {
+        let mut rho = DensityMatrix::new(2, State::ZERO);
+        let expected = Complex::new(1., 0.);
+        let res = rho.expectation_single(&Operator::one_qubit(OneQubitOp::Z), 1).unwrap();
+
+        assert_eq!(expected, res);
+    }
+
+    #[test]
+    fn test_expectation_single_3() {
+        let mut rho = DensityMatrix::new(3, State::ZERO);
+        let expected = Complex::new(1., 0.);
+        let res = rho.expectation_single(&Operator::one_qubit(OneQubitOp::Z), 2).unwrap();
+
+        assert_eq!(expected, res);
+    }
+    
+    #[test]
+    fn test_expectation_single_4() {
+        let mut rho = DensityMatrix::new(1, State::PLUS);
+        let expected = Complex::ONE;
+        let res = rho.expectation_single(&Operator::one_qubit(OneQubitOp::I), 0).unwrap();
+
+        assert_eq!(expected, res);
+    }
+
+    #[test]
+    fn test_expectation_single_5() {
+        let mut rho = DensityMatrix::new(2, State::PLUS);
+        let expected = Complex::ONE;
+        let res = rho.expectation_single(&Operator::one_qubit(OneQubitOp::I), 0).unwrap();
+
+        assert_eq!(expected, res);
+    }
+
+    #[test]
+    fn test_expectation_single_6() {
+        let mut rho = DensityMatrix::new(4, State::PLUS);
+        let expected = Complex::ONE;
+        let res = rho.expectation_single(&Operator::one_qubit(OneQubitOp::I), 0).unwrap();
+
+        assert_eq!(expected, res);
+    }
+
+    #[test]
+    fn test_expectation_single_7() {
+        let mut rho = DensityMatrix::new(8, State::PLUS);
+        let expected = Complex::ONE;
+        let res = rho.expectation_single(&Operator::one_qubit(OneQubitOp::I), 4).unwrap();
+
+        assert_eq!(expected, res);
+    }
+
+    #[test]
+    fn test_expectation_single_8() {
+        let mut rho = DensityMatrix::new(2, State::PLUS);
+        let expected = Complex::ONE;
+        let res = rho.expectation_single(&Operator::one_qubit(OneQubitOp::X), 0).unwrap();
+
+        assert_eq!(expected, res);
+    }
+
+    #[test]
+    fn test_expectation_single_9() {
+        let mut rho = DensityMatrix::new(2, State::PLUS);
+        let expected = Complex::new(SQRT_2, 0.);
+        let res = rho.expectation_single(&Operator::one_qubit(OneQubitOp::H), 0).unwrap();
+
+        assert!(num_traits::abs(expected.re - res.re) < 1e-8);
+    }
+
+    #[test]
+    fn test_expectation_single_10() {
+        let mut rho = DensityMatrix::new(1, State::ONE);
+        let expected = Complex::ZERO;
+        let res = rho.expectation_single(&Operator::one_qubit(OneQubitOp::X), 0).unwrap();
 
         assert_eq!(expected, res);
     }

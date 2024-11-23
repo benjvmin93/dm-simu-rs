@@ -8,11 +8,12 @@ use crate::tensor;
 use crate::tools::{are_elements_unique, bitwise_int_to_bin_vec, complex_approx_eq};
 
 #[pyo3::pyclass]
-#[derive(Copy, Clone)]
+#[derive(Debug, Copy, Clone)]
 pub enum State {
     ZERO,
     ONE,
     PLUS,
+    MINUS,
 }
 
 // 1D representation of a size * size density matrix.
@@ -71,6 +72,31 @@ impl DensityMatrix {
                 dm.data.set(&indices, Complex::ONE);
                 dm
             }
+            State::MINUS => {
+                let mut dm = Self {
+                    data: Tensor::from_vec(&vec![Complex::ZERO; size * size], vec![2; shape]),
+                    size,
+                    nqubits,
+                };
+            
+                // Generate the density matrix for |-\rangle^{\otimes n}
+                let factor = Complex::new(1.0 / (size as f64), 0.0); // Normalize by size (2^n)
+                for i in 0..size {
+                    for j in 0..size {
+                        let sign = if (i ^ j).count_ones() % 2 == 0 {
+                            Complex::ONE
+                        } else {
+                            -Complex::ONE
+                        };
+                        let value = factor * sign;
+                        let indices = bitwise_int_to_bin_vec(i * size + j, shape);
+                        dm.data.set(&indices, value);
+                    }
+                }
+                println!("dm = {}", dm);
+                dm
+            }
+            
         }
     }
 
@@ -136,7 +162,9 @@ impl DensityMatrix {
 
     // Access element at row i and column j
     pub fn get(&self, i: u8, j: u8) -> Complex<f64> {
-        *self.data.get(&[i, j])
+        let idx = i * self.size as u8 + j;
+        let bin_idx = bitwise_int_to_bin_vec(idx.into(), 2 * self.nqubits);
+        *self.data.get(&bin_idx)
     }
 
     // Set element at row i and column j
@@ -146,31 +174,35 @@ impl DensityMatrix {
         self.data.set(&indices, value);
     }
 
-    pub fn expectation_single(&self, op: &Operator, index: usize) -> Result<Complex<f64>, &str> {
+    pub fn expectation_single(&mut self, op: &Operator, index: usize) -> Result<Complex<f64>, &str> {
         if index >= self.nqubits {
-            return Err("Wrong target qubit.");
+            return Err("Index out of range");
         }
 
-        assert!(op.data.data.len() == 4); // Make sure op is a 1 qubit operator
+        let mut expectation = Complex::ZERO;        
+        let index_mask = 1 << self.nqubits - index - 1;
 
-        let mut result_tensor = self
-            .data
-            .tensordot(&op.data, (&[1], &[index]))
-            .unwrap();
-        result_tensor = result_tensor.moveaxis(&[0], &[index as i32]).unwrap();
-        let dm_result = DensityMatrix::from_tensor(result_tensor).unwrap();
-        Ok(dm_result.trace())
+        for (idx, rho_elt) in self.data.data.iter().enumerate() {
+            let i = idx / self.size;
+            let j = idx % self.size;
+
+            if (i & !index_mask) == (j & !index_mask) {
+                let op_i = (i & index_mask) >> (self.nqubits - index - 1);
+                let op_j = (j & index_mask) >> (self.nqubits - index - 1);
+
+                expectation += rho_elt * op.data.get(&[op_i as u8, op_j as u8]);
+            }
+        }
+
+        Ok(expectation)
     }
 
     pub fn trace(&self) -> Complex<f64> {
         // Compute sum over each diagonal elements.
         let mut trace = Complex::ZERO;
-        let mut step = 0;
-        for i in 0..self.size {
-            trace += self.data.get(&[i as u8, step]);
-            step += 1;
+        for i in 0..self.size as u8 {
+            trace += self.get(i, i);
         }
-
         trace
     }
 
