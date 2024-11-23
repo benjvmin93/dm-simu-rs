@@ -5,8 +5,10 @@ pub mod tools;
 
 use density_matrix::{DensityMatrix, State};
 use num_complex::Complex;
+use numpy::PyArrayMethods;
 use operators::Operator;
-use pyo3::{prelude::*, types::{PyComplex}};
+use pyo3::{exceptions::PyTypeError, prelude::*, types::PyComplex};
+use tensor::Tensor;
 
 #[pyo3::pymodule]
 fn dm_simu_rs<'py>(
@@ -15,6 +17,8 @@ fn dm_simu_rs<'py>(
 ) -> pyo3::prelude::PyResult<()> {
     m.add("Zero", State::ZERO);
     m.add("Plus", State::PLUS);
+    m.add("One", State::ONE);
+    m.add("Minus", State::MINUS);
 
     type PyVec<'py> = Bound<'py, pyo3::types::PyCapsule>;
 
@@ -113,12 +117,12 @@ fn dm_simu_rs<'py>(
     fn evolve_single<'py>(
         py: pyo3::prelude::Python<'py>,
         py_dm: PyVec<'py>,
-        py_op: PyVec<'py>,
+        op: numpy::borrow::PyReadonlyArrayDyn<Complex<f64>>,
         qubit: usize,
     ) -> pyo3::prelude::PyResult<()> {
         let dm = get_dm_mut_ref(py_dm);
-        let op = get_op_ref(py_op);
-        Ok(dm.evolve_single(op, qubit).unwrap())
+        let op = Operator::new(op.to_owned_array().as_slice().unwrap()).unwrap();
+        Ok(dm.evolve_single(&op, qubit).unwrap())
     }
     m.add_function(pyo3::wrap_pyfunction!(evolve_single, m)?)?;
 
@@ -126,12 +130,12 @@ fn dm_simu_rs<'py>(
     fn evolve<'py>(
         py: pyo3::prelude::Python<'py>,
         py_dm: PyVec<'py>,
-        py_op: PyVec<'py>,
+        op: numpy::borrow::PyReadonlyArrayDyn<Complex<f64>>,
         qubits: Vec<usize>,
     ) -> pyo3::prelude::PyResult<()> {
         let dm = get_dm_mut_ref(py_dm);
-        let op = get_op_ref(py_op);
-        Ok(dm.evolve(op, &qubits).unwrap())
+        let op = Operator::new(op.as_slice()?).unwrap();
+        Ok(dm.evolve(&op, &qubits).unwrap())
     }
     m.add_function(pyo3::wrap_pyfunction!(evolve, m)?)?;
 
@@ -166,6 +170,33 @@ fn dm_simu_rs<'py>(
         Ok(PyComplex::from_doubles_bound(py, result.re, result.im))
     }
     m.add_function(pyo3::wrap_pyfunction!(expectation_single, m)?)?;
+
+
+    #[pyo3::pyfunction]
+    fn set<'py>(py: pyo3::prelude::Python<'py>, new_dm: numpy::borrow::PyReadonlyArrayDyn<Complex<f64>>) -> pyo3::prelude::PyResult<PyVec<'py>> {
+        
+        let new_dm_vec = new_dm.as_slice().unwrap();
+        
+        if !new_dm_vec.len().is_power_of_two() {
+            return Err(pyo3::exceptions::PyValueError::new_err("New dm size is not a power of two.".to_string()));
+        }
+        
+        let mut new_n = (new_dm_vec.len() as f64).log2();
+        if new_n % 2. != 0. {
+            return Err(PyErr::new::<PyTypeError, _>("New dm size is not 2 ** 2n.".to_string()));
+        } else {
+            new_n /= 2.;
+        }
+
+        let new_tensor = Tensor::from_vec(new_dm_vec, vec![2; 2 * new_n as usize]);
+        let _dm = DensityMatrix::from_tensor(new_tensor).unwrap();
+        
+        make_dm_pyvec(
+            py,
+            _dm
+        )
+    }
+    m.add_function(pyo3::wrap_pyfunction!(set, m)?)?;
 
     Ok(())
 }
