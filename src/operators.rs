@@ -43,7 +43,7 @@ impl Operator {
 
         if n % 2 != 0 {
             return Err(
-                "Operator is not of the size 2^2n * 2^2n".to_string()
+                "Operator is not of the size 2^2n".to_string()
             );
         }
         let shape = vec![2; n];

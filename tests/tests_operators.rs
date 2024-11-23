@@ -105,17 +105,17 @@ mod tests_operators {
     #[test]
     fn test_transconjugate_random_unitary() {
         let mut u = Operator::new(&[
-            Complex::new(0.5, 0.5),
-            Complex::new(0.5, -0.5),
-            Complex::new(0.5, -0.5),
-            Complex::new(0.5, 0.5),
+            Complex::new(1., 0.5),
+            Complex::new(2., -0.5),
+            Complex::new(3., -0.5),
+            Complex::new(4., 0.5),
         ])
         .unwrap();
         u = u.transconj();
         print!("{}", u);
-        assert_eq!(*u.data.get(&[0, 0]), Complex::new(0.5, -0.5));
-        assert_eq!(*u.data.get(&[0, 1]), Complex::new(0.5, 0.5));
-        assert_eq!(*u.data.get(&[1, 0]), Complex::new(0.5, 0.5));
-        assert_eq!(*u.data.get(&[1, 1]), Complex::new(0.5, -0.5));
+        assert_eq!(*u.data.get(&[0, 0]), Complex::new(1., -0.5));
+        assert_eq!(*u.data.get(&[0, 1]), Complex::new(3., 0.5));
+        assert_eq!(*u.data.get(&[1, 0]), Complex::new(2., 0.5));
+        assert_eq!(*u.data.get(&[1, 1]), Complex::new(4., -0.5));
     }
 }
