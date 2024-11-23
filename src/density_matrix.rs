@@ -78,7 +78,7 @@ impl DensityMatrix {
                     size,
                     nqubits,
                 };
-            
+
                 // Generate the density matrix for |-\rangle^{\otimes n}
                 let factor = Complex::new(1.0 / (size as f64), 0.0); // Normalize by size (2^n)
                 for i in 0..size {
@@ -96,7 +96,6 @@ impl DensityMatrix {
                 println!("dm = {}", dm);
                 dm
             }
-            
         }
     }
 
@@ -129,10 +128,10 @@ impl DensityMatrix {
 
         let n = (size as f32).log2();
         if n % 2.0 != 0. {
-            return Err("Tensor size is not valid. It should be of size 2^(2n) with n the number of qubits.")
+            return Err("Tensor size is not valid. It should be of size 2^(2n) with n the number of qubits.");
         }
         let nqubits = (n / 2.) as usize;
-        
+
         Ok(DensityMatrix {
             data: tensor,
             size: 2_i32.pow(nqubits as u32) as usize,
@@ -174,12 +173,16 @@ impl DensityMatrix {
         self.data.set(&indices, value);
     }
 
-    pub fn expectation_single(&mut self, op: &Operator, index: usize) -> Result<Complex<f64>, &str> {
+    pub fn expectation_single(
+        &mut self,
+        op: &Operator,
+        index: usize,
+    ) -> Result<Complex<f64>, &str> {
         if index >= self.nqubits {
             return Err("Index out of range");
         }
 
-        let mut expectation = Complex::ZERO;        
+        let mut expectation = Complex::ZERO;
         let index_mask = 1 << self.nqubits - index - 1;
 
         for (idx, rho_elt) in self.data.data.iter().enumerate() {
@@ -313,8 +316,8 @@ impl DensityMatrix {
         }
     }
     /*
-    ** Currently making a kronecker product by its own.
-    ** Would like to generalize it to the tensor struct with the tensor.product method.
+     ** Currently making a kronecker product by its own.
+     ** Would like to generalize it to the tensor struct with the tensor.product method.
      */
     pub fn tensor(&mut self, other: &DensityMatrix) {
         // Update the number of qubits in `self`

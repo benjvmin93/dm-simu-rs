@@ -42,9 +42,7 @@ impl Operator {
         let n = (size as f32).log2() as usize;
 
         if n % 2 != 0 {
-            return Err(
-                "Operator is not of the size 2^2n".to_string()
-            );
+            return Err("Operator is not of the size 2^2n".to_string());
         }
         let shape = vec![2; n];
 

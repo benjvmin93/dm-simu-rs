@@ -1,6 +1,9 @@
 #[cfg(test)]
 mod tests_tensor {
-    use dm_simu_rs::{tensor::Tensor, tools::{bitwise_bin_vec_to_int, bitwise_int_to_bin_vec}};
+    use dm_simu_rs::{
+        tensor::Tensor,
+        tools::{bitwise_bin_vec_to_int, bitwise_int_to_bin_vec},
+    };
     use num_complex::Complex;
 
     #[test]
@@ -36,7 +39,10 @@ mod tests_tensor {
     fn test_tensor_get() {
         let _ = (0..15).into_iter().map(|n| {
             let shape = vec![2; 2 * n];
-            let tensor: Tensor<usize> = Tensor::from_vec(&(0..shape.iter().product()).collect::<Vec<usize>>(), shape.clone());
+            let tensor: Tensor<usize> = Tensor::from_vec(
+                &(0..shape.iter().product()).collect::<Vec<usize>>(),
+                shape.clone(),
+            );
             for i in 0..shape.iter().product() {
                 let bin_idx = bitwise_int_to_bin_vec(i, n);
                 assert_eq!(*tensor.get(&bin_idx), i);

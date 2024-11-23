@@ -90,8 +90,7 @@ fn dm_simu_rs<'py>(
     ) -> pyo3::prelude::PyResult<PyVec<'py>> {
         make_op_pyvec(
             py,
-            Operator::new(data.as_slice()?)
-                .map_err(pyo3::exceptions::PyValueError::new_err)?,
+            Operator::new(data.as_slice()?).map_err(pyo3::exceptions::PyValueError::new_err)?,
         )
     }
     m.add_function(pyo3::wrap_pyfunction!(new_op, m)?)?;
@@ -162,39 +161,46 @@ fn dm_simu_rs<'py>(
     m.add_function(pyo3::wrap_pyfunction!(tensor_dm, m)?)?;
 
     #[pyo3::pyfunction]
-    fn expectation_single<'py>(py: pyo3::prelude::Python<'py>, dm: PyVec<'py>, op: PyVec<'py>, i: usize) -> pyo3::prelude::PyResult<pyo3::Bound<'py, PyComplex>> {
+    fn expectation_single<'py>(
+        py: pyo3::prelude::Python<'py>,
+        dm: PyVec<'py>,
+        op: PyVec<'py>,
+        i: usize,
+    ) -> pyo3::prelude::PyResult<pyo3::Bound<'py, PyComplex>> {
         let dm = get_dm_mut_ref(dm);
         let op = get_op_ref(op);
-        
+
         let result = dm.expectation_single(op, i).unwrap();
         Ok(PyComplex::from_doubles_bound(py, result.re, result.im))
     }
     m.add_function(pyo3::wrap_pyfunction!(expectation_single, m)?)?;
 
-
     #[pyo3::pyfunction]
-    fn set<'py>(py: pyo3::prelude::Python<'py>, new_dm: numpy::borrow::PyReadonlyArrayDyn<Complex<f64>>) -> pyo3::prelude::PyResult<PyVec<'py>> {
-        
+    fn set<'py>(
+        py: pyo3::prelude::Python<'py>,
+        new_dm: numpy::borrow::PyReadonlyArrayDyn<Complex<f64>>,
+    ) -> pyo3::prelude::PyResult<PyVec<'py>> {
         let new_dm_vec = new_dm.as_slice().unwrap();
-        
+
         if !new_dm_vec.len().is_power_of_two() {
-            return Err(pyo3::exceptions::PyValueError::new_err("New dm size is not a power of two.".to_string()));
+            return Err(pyo3::exceptions::PyValueError::new_err(
+                "New dm size is not a power of two.".to_string(),
+            ));
         }
-        
+
         let mut new_n = (new_dm_vec.len() as f64).log2();
         if new_n % 2. != 0. {
-            return Err(PyErr::new::<PyTypeError, _>("New dm size is not 2 ** 2n.".to_string()));
+            return Err(PyErr::new::<PyTypeError, _>(
+                "New dm size is not 2 ** 2n.".to_string(),
+            ));
         } else {
             new_n /= 2.;
         }
 
         let new_tensor = Tensor::from_vec(new_dm_vec, vec![2; 2 * new_n as usize]);
         let _dm = DensityMatrix::from_tensor(new_tensor).unwrap();
-        
-        make_dm_pyvec(
-            py,
-            _dm
-        )
+
+        make_dm_pyvec(py, _dm)
     }
     m.add_function(pyo3::wrap_pyfunction!(set, m)?)?;
 

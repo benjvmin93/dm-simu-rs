@@ -30,7 +30,10 @@ where
             vec.len(),
             shape
         );
-        Self { data: vec.into(), shape }
+        Self {
+            data: vec.into(),
+            shape,
+        }
     }
 
     pub fn print(&self, f: &mut fmt::Formatter<'_>, shape: &[usize], data: &[T]) -> fmt::Result
@@ -149,7 +152,7 @@ where
         if axes.0.len() != axes.1.len() {
             return Err("Axes dimensions must match");
         }
-    
+
         // Ensure axes are within bounds
         if axes.0.iter().any(|&axis| axis >= self.shape.len()) {
             return Err("Axis out of bounds for self");
@@ -157,31 +160,30 @@ where
         if axes.1.iter().any(|&axis| axis >= other.shape.len()) {
             return Err("Axis out of bounds for other");
         }
-    
+
         // Prepare new shapes for contraction
         let mut new_shape_self = self.shape.clone();
         let mut new_shape_other = other.shape.clone();
-    
+
         let mut sorted_axes_self = axes.0.to_vec();
         sorted_axes_self.sort_by(|a, b| b.cmp(a)); // Sort in descending order
         for &axis in sorted_axes_self.iter() {
             new_shape_self.remove(axis);
         }
-        
+
         let mut sorted_axes_other = axes.1.to_vec();
         sorted_axes_other.sort_by(|a, b| b.cmp(a)); // Sort in descending order
         for &axis in sorted_axes_other.iter() {
             new_shape_other.remove(axis);
         }
 
-    
         new_shape_self.extend(new_shape_other);
-    
+
         // Initialize result tensor
         let result_shape = new_shape_self;
         let result_data = vec![T::zero(); result_shape.iter().product()];
         let mut result = Tensor::from_vec(&result_data, result_shape.clone());
-    
+
         for (i, value_self) in self.data.iter().enumerate() {
             let indices_self = Self::unravel_index(i, &self.shape);
             let indices_common: Vec<_> = axes.0.iter().map(|&axis| indices_self[axis]).collect();
@@ -191,12 +193,12 @@ where
                 .filter(|&(idx, _)| !axes.0.contains(&idx))
                 .map(|(_, &val)| val)
                 .collect();
-    
+
             for (j, value_other) in other.data.iter().enumerate() {
                 let indices_other = Self::unravel_index(j, &other.shape);
                 let indices_common_other: Vec<_> =
                     axes.1.iter().map(|&axis| indices_other[axis]).collect();
-    
+
                 if indices_common == indices_common_other {
                     let indices_other_reduced: Vec<_> = indices_other
                         .iter()
@@ -204,10 +206,10 @@ where
                         .filter(|&(idx, _)| !axes.1.contains(&idx))
                         .map(|(_, &val)| val)
                         .collect();
-    
+
                     let mut result_indices = indices_self_reduced.clone();
                     result_indices.extend(indices_other_reduced);
-    
+
                     let result_index = Self::ravel_index(&result_indices, &result_shape);
                     result.data[result_index] += value_self.clone() * value_other.clone();
                 }
