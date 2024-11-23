@@ -6,8 +6,6 @@ from copy import deepcopy
 
 import pytest
 
-hyp.settings(deadline=None)
-
 def dm_get_nqubits(array: np.ndarray) -> int:
     """
         Compute the number of qubit with a given density matrix.
@@ -291,31 +289,30 @@ def test_expectation_single(sv, op):
     dm_arr = np.reshape(dm_arr, (2 ** nqubits, 2 ** nqubits))
     index = np.random.randint(0, nqubits)
     
-    print(f"Expectation single test args:")
-    print(f"\tnqubits: {nqubits}\n\tdm{dm_arr}\n\top:{op}\n\ti:{index}")
+    # print(f"Expectation single test args:")
+    # print(f"\tnqubits: {nqubits}\n\tdm{dm_arr}\n\top:{op}\n\ti:{index}")
     ref = expectation_single(dm_arr, op, index, nqubits)
     
-    print(f"\texpected: {ref}\n===============================")
+    # print(f"\texpected: {ref}\n===============================")
     
-    print(f"op size: {len(op.flatten())}")
     op_rs = dm_simu_rs.new_op(op.flatten())
     result = dm_simu_rs.expectation_single(dm, op_rs, index)
     
-    print(f"result rs: {result}\n===============================")
+    #print(f"result rs: {result}\n===============================")
     
-    assert(False)    
+    tol = 1e-8
+    assert(abs(result - ref) < tol)
     
 
 @hyp.given(
         sv_st(max=5),
         hyp.strategies.sampled_from(op_single)
     )
-def test_evolve_single(sv, op):
+def test_evolve_single(sv: np.ndarray, op: np.ndarray):
     """
             Test for evolve density matrix with single qubit operators.
     """
-    op_simu = dm_simu_rs.new_op(op.flatten())
-    dm = dm_simu_rs.new_dm_from_vec(sv)
+    dm = dm_simu_rs.new_dm_from_vec(sv.flatten())
     dm_ref = np.outer(sv, sv)
 
     dm_arr = dm_simu_rs.get_dm(dm)
@@ -326,7 +323,7 @@ def test_evolve_single(sv, op):
     assert Nqubits_dm == Nqubits_ref
     
     target = np.random.randint(0, Nqubits_dm)
-    dm_simu_rs.evolve_single(dm, op_simu, target)
+    dm_simu_rs.evolve_single(dm, op.flatten(), target)
     dm_ref = evolve_single(dm_ref, Nqubits_ref, op, target)
 
     norm_ref = get_norm(dm_ref, Nqubits_ref)
@@ -340,11 +337,11 @@ def test_evolve_single(sv, op):
         sv_st(min=2, max=7),
         hyp.strategies.sampled_from(op_double),   
     )
-def test_evolve(sv, op):
+@hyp.settings(deadline=None)
+def test_evolve(sv: np.ndarray, op: np.ndarray):
     """
             Test for evolve density matrix with any operator.
     """
-    op_simu = dm_simu_rs.new_op(op.flatten())
     dm = dm_simu_rs.new_dm_from_vec(sv)
     dm_ref = np.outer(sv, sv)
 
@@ -358,7 +355,7 @@ def test_evolve(sv, op):
     # print(f'nqubits = {Nqubits_dm}')
     targets = np.random.choice(range(Nqubits_dm), size=2, replace=False)
 
-    dm_simu_rs.evolve(dm, op_simu, targets)
+    dm_simu_rs.evolve(dm, op.flatten(), targets)
     dm_ref = evolve(dm_ref, Nqubits_ref, op, targets)
     #print(f'{dm_simu_rs.get_dm(dm)}')
     #print(f'{dm_ref.flatten()}')
