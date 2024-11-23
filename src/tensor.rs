@@ -1,8 +1,6 @@
 use core::fmt;
-use num_traits::{One, Zero};
+use num_traits::Zero;
 use std::ops::{Add, AddAssign, Mul};
-
-use crate::tools::{bitwise_bin_vec_to_int, bitwise_int_to_bin_vec};
 
 #[derive(Debug, Clone)]
 pub struct Tensor<T> {
@@ -114,12 +112,7 @@ where
         assert_eq!(other.data.len(), other.shape.iter().product());
 
         // Calculate the shape of the resulting tensor
-        let new_shape: Vec<usize> = self
-            .shape
-            .iter()
-            .zip(other.shape.iter())
-            .map(|(self_dim, other_dim)| self_dim * other_dim)
-            .collect();
+        let new_shape = [self.shape.clone(), other.shape.clone()].concat();
 
         let result_size = new_shape.iter().copied().product::<usize>();
         let mut new_data = Vec::with_capacity(result_size);
@@ -156,34 +149,39 @@ where
         if axes.0.len() != axes.1.len() {
             return Err("Axes dimensions must match");
         }
-
+    
+        // Ensure axes are within bounds
+        if axes.0.iter().any(|&axis| axis >= self.shape.len()) {
+            return Err("Axis out of bounds for self");
+        }
+        if axes.1.iter().any(|&axis| axis >= other.shape.len()) {
+            return Err("Axis out of bounds for other");
+        }
+    
+        // Prepare new shapes for contraction
         let mut new_shape_self = self.shape.clone();
         let mut new_shape_other = other.shape.clone();
-
+    
         let mut sorted_axes_self = axes.0.to_vec();
-        sorted_axes_self.sort_by(|a: &usize, b: &usize| b.cmp(a));
+        sorted_axes_self.sort_by(|a, b| b.cmp(a)); // Sort in descending order
         for &axis in sorted_axes_self.iter() {
-            if axis >= new_shape_self.len() {
-                return Err("Axis out of bounds for self");
-            }
             new_shape_self.remove(axis);
         }
-
+        
         let mut sorted_axes_other = axes.1.to_vec();
-        sorted_axes_other.sort_by(|a, b| b.cmp(a));
+        sorted_axes_other.sort_by(|a, b| b.cmp(a)); // Sort in descending order
         for &axis in sorted_axes_other.iter() {
-            if axis >= new_shape_other.len() {
-                return Err("Axis out of bounds for other");
-            }
             new_shape_other.remove(axis);
         }
 
+    
         new_shape_self.extend(new_shape_other);
-
+    
+        // Initialize result tensor
         let result_shape = new_shape_self;
         let result_data = vec![T::zero(); result_shape.iter().product()];
         let mut result = Tensor::from_vec(&result_data, result_shape.clone());
-
+    
         for (i, value_self) in self.data.iter().enumerate() {
             let indices_self = Self::unravel_index(i, &self.shape);
             let indices_common: Vec<_> = axes.0.iter().map(|&axis| indices_self[axis]).collect();
@@ -193,23 +191,23 @@ where
                 .filter(|&(idx, _)| !axes.0.contains(&idx))
                 .map(|(_, &val)| val)
                 .collect();
-
+    
             for (j, value_other) in other.data.iter().enumerate() {
                 let indices_other = Self::unravel_index(j, &other.shape);
                 let indices_common_other: Vec<_> =
                     axes.1.iter().map(|&axis| indices_other[axis]).collect();
-
+    
                 if indices_common == indices_common_other {
-                    let indices_other_reduces: Vec<_> = indices_other
+                    let indices_other_reduced: Vec<_> = indices_other
                         .iter()
                         .enumerate()
                         .filter(|&(idx, _)| !axes.1.contains(&idx))
                         .map(|(_, &val)| val)
                         .collect();
-
+    
                     let mut result_indices = indices_self_reduced.clone();
-                    result_indices.extend(indices_other_reduces);
-
+                    result_indices.extend(indices_other_reduced);
+    
                     let result_index = Self::ravel_index(&result_indices, &result_shape);
                     result.data[result_index] += value_self.clone() * value_other.clone();
                 }
