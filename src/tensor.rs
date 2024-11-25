@@ -1,6 +1,7 @@
 use core::fmt;
+use num_complex::Complex;
 use num_traits::Zero;
-use std::ops::{Add, AddAssign, Mul};
+use std::ops::{Add, AddAssign, Mul, Sub};
 
 #[derive(Debug, Clone)]
 pub struct Tensor<T> {
@@ -10,7 +11,7 @@ pub struct Tensor<T> {
 
 impl<T> Tensor<T>
 where
-    T: Zero + Clone + Mul<Output = T> + Add<Output = T> + AddAssign,
+    T: Zero + Clone + Mul<Output = T> + Add<Output = T> +  Sub<Output = T> + AddAssign + AbsDiff,
 {
     // Initialize a new tensor with given shape
     pub fn new(shape: &[usize]) -> Self {
@@ -335,15 +336,39 @@ where
         }
         self.transpose(&order)
     }
+
+    pub fn equals(&self, other: &Tensor<T>, tol: f64) -> bool {
+        // Check if shapes are identical
+        if self.shape != other.shape {
+            return false;
+        }
+
+        // Compare each element with the tolerance
+        self.data
+            .iter()
+            .zip(other.data.iter())
+            .all(|(a, b)| T::abs_diff(a, b) <= tol)
+    }
 }
 
-impl<T> fmt::Display for Tensor<T>
-where
-    T: fmt::Debug + Clone + Add<Output = T> + Mul<Output = T> + AddAssign + Zero,
-{
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "array(")?;
-        self.print(f, &self.shape, &self.data)?;
-        write!(f, ")")
+pub trait AbsDiff {
+    fn abs_diff(a: &Self, b: &Self) -> f64;
+}
+
+impl AbsDiff for f64 {
+    fn abs_diff(a: &Self, b: &Self) -> f64 {
+        (a - b).abs()
+    }
+}
+
+impl AbsDiff for Complex<f64> {
+    fn abs_diff(a: &Self, b: &Self) -> f64 {
+        (a - b).norm()
+    }
+}
+
+impl AbsDiff for i32 {
+    fn abs_diff(a: &Self, b: &Self) -> f64 {
+        (a - b).abs() as f64
     }
 }

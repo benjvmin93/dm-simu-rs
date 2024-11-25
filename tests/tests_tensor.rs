@@ -38,14 +38,14 @@ mod tests_tensor {
     #[test]
     fn test_tensor_get() {
         let _ = (0..15).into_iter().map(|n| {
-            let shape = vec![2; 2 * n];
-            let tensor: Tensor<usize> = Tensor::from_vec(
-                &(0..shape.iter().product()).collect::<Vec<usize>>(),
+            let shape: Vec<usize> = vec![2; 2 * n];
+            let tensor: Tensor<i32> = Tensor::from_vec(
+                &(0..shape.iter().map(|&a| a as i32).product()).collect::<Vec<i32>>(),
                 shape.clone(),
             );
             for i in 0..shape.iter().product() {
                 let bin_idx = bitwise_int_to_bin_vec(i, n);
-                assert_eq!(*tensor.get(&bin_idx), i);
+                assert_eq!(*tensor.get(&bin_idx), i as i32);
             }
         });
     }
