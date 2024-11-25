@@ -1,7 +1,6 @@
 #[cfg(test)]
 mod tests_dm {
-    use std::f64::consts::SQRT_2;
-
+    use std::f64::consts::{FRAC_1_SQRT_2, SQRT_2};
     use dm_simu_rs::density_matrix::{DensityMatrix, State};
     use dm_simu_rs::operators::{OneQubitOp, Operator, TwoQubitsOp};
     use dm_simu_rs::tensor::Tensor;
@@ -1525,5 +1524,139 @@ mod tests_dm {
             .unwrap();
 
         assert_eq!(expected, res);
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_ptrace_fail() {
+        let mut rho = DensityMatrix::new(2, State::ONE);
+        rho.ptrace(&[2]).unwrap();
+    }
+
+    #[test]
+    fn test_ptrace_1() {
+        // Init (|00> + |01>) / sqrt(2)
+        let sv: &[Complex<f64>; 4] = &[Complex::new(FRAC_1_SQRT_2, 0.), Complex::new(FRAC_1_SQRT_2, 0.), Complex::ZERO, Complex::ZERO];
+        let mut dm = DensityMatrix::from_statevec(sv).unwrap();
+        dm.ptrace(&[0]).unwrap();
+        
+        let expected_tensor = Tensor::from_vec(
+            &[Complex::new(0.5, 0.), Complex::new(0.5, 0.), Complex::new(0.5, 0.), Complex::new(0.5, 0.)], 
+            vec![2, 2]
+        );
+
+        let tol = 1e-15;
+
+        if !dm.data.equals(&expected_tensor, 1e-15) {
+            println!("First dm: {:?}\n================", dm.data);
+            println!("Second dm: \n{:?}\n================", expected_tensor);
+        }
+
+        assert!(dm.data.equals(&expected_tensor, tol));
+    }
+
+    #[test]
+    fn test_ptrace_2() {
+        // Init (|00> + |01>) / sqrt(2)
+        let sv: &[Complex<f64>; 4] = &[Complex::new(FRAC_1_SQRT_2, 0.), Complex::new(FRAC_1_SQRT_2, 0.), Complex::ZERO, Complex::ZERO];
+        let mut dm = DensityMatrix::from_statevec(sv).unwrap();
+        dm.ptrace(&[1]).unwrap();
+        let expected_tensor: Tensor<Complex<f64>> = Tensor::from_vec(
+            &[Complex::ONE, Complex::ZERO, Complex::ZERO, Complex::ZERO],
+            vec![2, 2]
+        );
+
+        let tol = 1e-15;
+
+        if !dm.data.equals(&expected_tensor, 1e-15) {
+            println!("First dm: {:?}\n================", dm.data);
+            println!("Second dm: \n{:?}\n================", expected_tensor);
+        }
+
+        assert!(dm.data.equals(&expected_tensor, tol));
+    }
+
+    #[test]
+    fn test_ptrace_3() {
+        // Init (|00> + |01>) / sqrt(2)
+        let sv: &[Complex<f64>; 4] = &[Complex::new(FRAC_1_SQRT_2, 0.), Complex::new(FRAC_1_SQRT_2, 0.), Complex::ZERO, Complex::ZERO];
+        let mut dm = DensityMatrix::from_statevec(sv).unwrap();
+        dm.ptrace(&[0, 1]).unwrap();
+        let expected_tensor: Tensor<Complex<f64>> = Tensor::from_vec(
+            &[Complex::ONE],
+            vec![1]
+        );
+
+        let tol = 1e-15;
+
+        if !dm.data.equals(&expected_tensor, 1e-15) {
+            println!("First dm: {:?}\n================", dm.data);
+            println!("Second dm: \n{:?}\n================", expected_tensor);
+        }
+
+        assert!(dm.data.equals(&expected_tensor, tol));
+    }
+
+    #[test]
+    fn test_ptrace_4() {
+        let mut dm = DensityMatrix::new(4, State::PLUS);
+        dm.ptrace(&[0, 1, 2]).unwrap();
+        let expected_tensor: Tensor<Complex<f64>> = Tensor::from_vec(
+            &[Complex::new(0.5, 0.), Complex::new(0.5, 0.), Complex::new(0.5, 0.), Complex::new(0.5, 0.)],
+            vec![2, 2]
+        );
+
+        let tol = 1e-15;
+
+        if !dm.data.equals(&expected_tensor, 1e-15) {
+            println!("First dm: {:?}\n================", dm.data);
+            println!("Second dm: \n{:?}\n================", expected_tensor);
+        }
+
+        assert!(dm.data.equals(&expected_tensor, tol));
+    }
+
+    #[test]
+    fn test_ptrace_5() {
+        let mut dm = DensityMatrix::new(4, State::PLUS);
+        dm.ptrace(&[0, 1, 2, 3]).unwrap();
+        let expected_tensor: Tensor<Complex<f64>> = Tensor::from_vec(
+            &[Complex::ONE],
+            vec![1]
+        );
+
+        let tol = 1e-15;
+
+        if !dm.data.equals(&expected_tensor, 1e-15) {
+            println!("First dm: {:?}\n================", dm.data);
+            println!("Second dm: \n{:?}\n================", expected_tensor);
+        }
+
+        assert!(dm.data.equals(&expected_tensor, tol));
+    }
+
+    #[test]
+    fn test_ptrace_6() {
+        let sv = &[Complex::ZERO, Complex::new(1. / 3_f64.sqrt(), 0.), Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::new(2_f64.sqrt() / 3_f64.sqrt(), 0.), Complex::ZERO, Complex::ZERO];
+        let mut dm = DensityMatrix::from_statevec(sv).unwrap();
+        dm.ptrace(&[2]).unwrap();
+        let expected_tensor: Tensor<Complex<f64>> = Tensor::from_vec(
+            &[
+                (1. / 3.).into(), Complex::ZERO, (SQRT_2 / 3.).into(), Complex::ZERO,
+                Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO,
+                (SQRT_2 / 3.).into(), Complex::ZERO, (2. / 3.).into(), Complex::ZERO,
+                Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO
+            ],
+            vec![2, 2, 2, 2]
+        );
+
+        let tol = 1e-15;
+
+        if !dm.data.equals(&expected_tensor, 1e-15) {
+            println!("First dm: {:?}\n================", dm.data);
+            println!("Second dm: \n{:?}\n================", expected_tensor);
+        }
+
+        assert!(dm.data.equals(&expected_tensor, tol));
     }
 }

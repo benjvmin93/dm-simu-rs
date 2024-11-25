@@ -5,7 +5,7 @@ use tensor::Tensor;
 
 use crate::operators::{OneQubitOp, Operator, TwoQubitsOp};
 use crate::tensor;
-use crate::tools::{are_elements_unique, bitwise_int_to_bin_vec, complex_approx_eq};
+use crate::tools::{are_elements_unique, bitwise_bin_vec_to_int, bitwise_int_to_bin_vec, complex_approx_eq};
 
 #[pyo3::pyclass]
 #[derive(Debug, Copy, Clone)]
@@ -354,26 +354,55 @@ impl DensityMatrix {
         if !qargs.iter().all(|&e| e < n) {
             return Err("Wrong qubit argument for partial trace");
         }
-        let nqubit_after = n - qargs.len();
-        let second_trace_axe = qargs.iter().map(|e| e + n).collect::<Vec<_>>();
-        let trace_axes = [qargs, &second_trace_axe].concat();
-
-        // Build identity tensor
-        let id_tensor_size = 2_i32.pow(qargs.len() as u32) as usize;
-        let mut id_tensor = Tensor::new(&vec![2; qargs.len() * 2]);
-        for i in 0..id_tensor_size * id_tensor_size {
-            let index = bitwise_int_to_bin_vec(i * id_tensor_size + i, qargs.len() * 2);
-            id_tensor.set(&index, Complex::ONE);
+    
+        let qargs_set: std::collections::HashSet<usize> = qargs.iter().cloned().collect();
+    
+        let total_dim = 2_usize.pow(n as u32);
+    
+        // Indices for subsystems
+        let remaining_qubits: Vec<usize> = (0..n).filter(|i| !qargs_set.contains(i)).collect();
+        let remaining_dim = 2_usize.pow(remaining_qubits.len() as u32);
+    
+        // Initialize reduced density matrix
+        let mut reduced_dm = vec![Complex::ZERO; remaining_dim * remaining_dim];
+    
+        // Iterate through all basis states
+        for i in 0..total_dim {
+            for j in 0..total_dim {
+                // Convert to binary representations
+                let i_bin = bitwise_int_to_bin_vec(i, n);
+                let j_bin = bitwise_int_to_bin_vec(j, n);
+    
+                // Extract indices for the remaining subsystem
+                let remaining_i: Vec<u8> = remaining_qubits.iter().map(|&q| i_bin[q]).collect();
+                let remaining_j: Vec<u8> = remaining_qubits.iter().map(|&q| j_bin[q]).collect();
+    
+                // Map indices to reduced density matrix
+                let reduced_i = bitwise_bin_vec_to_int(&remaining_i);
+                let reduced_j = bitwise_bin_vec_to_int(&remaining_j);
+    
+                // Check if traced-out subsystem indices match
+                let traced_i: Vec<u8> = qargs.iter().map(|&q| i_bin[q]).collect();
+                let traced_j: Vec<u8> = qargs.iter().map(|&q| j_bin[q]).collect();
+    
+                if traced_i == traced_j {
+                    // Add contribution to reduced density matrix
+                    reduced_dm[reduced_i * remaining_dim + reduced_j] += self.data.data[i * total_dim + j];
+                }
+            }
         }
-
-        let tensordot_first_axe = (0..qargs.len() * 2).collect::<Vec<usize>>();
-        let rho_res = id_tensor
-            .tensordot(&self.data, (&tensordot_first_axe, &trace_axes))
-            .unwrap();
-        self.data = rho_res;
-        self.nqubits = nqubit_after;
+    
+        // Update density matrix with the reduced one
+        self.data.data = reduced_dm;
+        let mut shape: Vec<usize> = vec![1];
+        if remaining_qubits.len() != 0 {
+            shape = vec![2; remaining_dim];
+        }
+        self.data.shape = shape;
+        self.nqubits -= qargs.len();
+    
         Ok(())
-    }
+    }    
 
     pub fn entangle(&mut self, edge: &(usize, usize)) {
         self.evolve(&Operator::two_qubits(TwoQubitsOp::CZ), &[edge.0, edge.1]);
