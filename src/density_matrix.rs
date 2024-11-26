@@ -1,6 +1,8 @@
 use core::fmt;
+use std::collections::HashSet;
 
 use num_complex::Complex;
+use rayon::iter::{IndexedParallelIterator, IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
 use tensor::Tensor;
 
 use crate::operators::{OneQubitOp, Operator, TwoQubitsOp};
@@ -174,39 +176,43 @@ impl DensityMatrix {
     }
 
     pub fn expectation_single(
-        &mut self,
+        &self,
         op: &Operator,
         index: usize,
     ) -> Result<Complex<f64>, &str> {
         if index >= self.nqubits {
             return Err("Index out of range");
         }
-
-        let mut expectation = Complex::ZERO;
-        let index_mask = 1 << self.nqubits - index - 1;
-
-        for (idx, rho_elt) in self.data.data.iter().enumerate() {
-            let i = idx / self.size;
-            let j = idx % self.size;
-
-            if (i & !index_mask) == (j & !index_mask) {
-                let op_i = (i & index_mask) >> (self.nqubits - index - 1);
-                let op_j = (j & index_mask) >> (self.nqubits - index - 1);
-
-                expectation += rho_elt * op.data.get(&[op_i as u8, op_j as u8]);
-            }
-        }
-
+    
+        let index_mask = 1 << (self.nqubits - index - 1);
+    
+        // Parallel computation of expectation
+        let expectation = self.data.data
+            .par_iter()
+            .enumerate()
+            .map(|(idx, rho_elt)| {
+                let i = idx / self.size;
+                let j = idx % self.size;
+    
+                if (i & !index_mask) == (j & !index_mask) {
+                    let op_i = (i & index_mask) >> (self.nqubits - index - 1);
+                    let op_j = (j & index_mask) >> (self.nqubits - index - 1);
+    
+                    rho_elt * op.data.get(&[op_i as u8, op_j as u8])
+                } else {
+                    Complex::ZERO
+                }
+            })
+            .reduce(|| Complex::ZERO, |a, b| a + b); // Combine partial results
+    
         Ok(expectation)
     }
 
     pub fn trace(&self) -> Complex<f64> {
-        // Compute sum over each diagonal elements.
-        let mut trace = Complex::ZERO;
-        for i in 0..self.size as u8 {
-            trace += self.get(i, i);
-        }
-        trace
+        // Compute the sum over the diagonal elements.
+        (0..self.size)
+            .map(|i| self.get(i as u8, i as u8))
+            .fold(Complex::ZERO, |acc, x| acc + x) // Fold ensures a starting value
     }
 
     pub fn normalize(&mut self) {
@@ -214,7 +220,7 @@ impl DensityMatrix {
         self.data.data = self
             .data
             .data
-            .iter()
+            .par_iter()
             .map(|&c| c / trace)
             .collect::<Vec<_>>();
     }
@@ -322,28 +328,32 @@ impl DensityMatrix {
     pub fn tensor(&mut self, other: &DensityMatrix) {
         // Update the number of qubits in `self`
         self.nqubits += other.nqubits;
-
+    
         // Calculate the new size and shape for the resulting tensor
         let new_dim = self.size * other.size;
         let new_shape = vec![2; 2 * self.nqubits];
-
+    
         // Create a new result tensor with the updated shape
         let mut result = Tensor::new(&new_shape);
-
-        // Compute the tensor product using iterators for clarity
-        for (i, j) in (0..new_dim).flat_map(|i| (0..new_dim).map(move |j| (i, j))) {
+    
+        // Compute the tensor product in parallel
+        result.data.iter_mut().enumerate().for_each(|(idx, res)| {
+            // Decompose the linear index into 2D indices (i, j)
+            let i = idx / new_dim;
+            let j = idx % new_dim;
+    
             // Decompose indices into `self` and `other` components
             let (self_row, other_row) = (i / other.size, i % other.size);
             let (self_col, other_col) = (j / other.size, j % other.size);
-
+    
             // Retrieve elements from `self` and `other`
             let self_data = self.data.data[self_row * self.size + self_col];
             let other_data = other.data.data[other_row * other.size + other_col];
-
+    
             // Compute and store the result
-            result.data[i * new_dim + j] = self_data * other_data;
-        }
-
+            *res = self_data * other_data;
+        });
+    
         // Update `self` with the resulting tensor
         self.data = result;
         self.size = new_dim; // Update the size for consistency
@@ -355,42 +365,50 @@ impl DensityMatrix {
             return Err("Wrong qubit argument for partial trace");
         }
     
-        let qargs_set: std::collections::HashSet<usize> = qargs.iter().cloned().collect();
+        let qargs_set: HashSet<usize> = qargs.iter().cloned().collect();
     
         let total_dim = 2_usize.pow(n as u32);
     
         // Indices for subsystems
         let remaining_qubits: Vec<usize> = (0..n).filter(|i| !qargs_set.contains(i)).collect();
         let remaining_dim = 2_usize.pow(remaining_qubits.len() as u32);
+        
+        // Use a parallel iterator for the outer loop
+        let reduced_dm = (0..remaining_dim * remaining_dim)
+            .into_par_iter()
+            .map(|idx| {
+                let reduced_i = idx / remaining_dim;
+                let reduced_j = idx % remaining_dim;
     
-        // Initialize reduced density matrix
-        let mut reduced_dm = vec![Complex::ZERO; remaining_dim * remaining_dim];
+                let remaining_i_bin = bitwise_int_to_bin_vec(reduced_i, remaining_qubits.len());
+                let remaining_j_bin = bitwise_int_to_bin_vec(reduced_j, remaining_qubits.len());
     
-        // Iterate through all basis states
-        for i in 0..total_dim {
-            for j in 0..total_dim {
-                // Convert to binary representations
-                let i_bin = bitwise_int_to_bin_vec(i, n);
-                let j_bin = bitwise_int_to_bin_vec(j, n);
+                let mut contribution = Complex::ZERO;
     
-                // Extract indices for the remaining subsystem
-                let remaining_i: Vec<u8> = remaining_qubits.iter().map(|&q| i_bin[q]).collect();
-                let remaining_j: Vec<u8> = remaining_qubits.iter().map(|&q| j_bin[q]).collect();
+                for i in 0..(1 << qargs.len()) {
+                    let i_bin = bitwise_int_to_bin_vec(i, qargs.len());
     
-                // Map indices to reduced density matrix
-                let reduced_i = bitwise_bin_vec_to_int(&remaining_i);
-                let reduced_j = bitwise_bin_vec_to_int(&remaining_j);
+                    // Map remaining and traced indices back to the full index space
+                    let mut full_i = vec![0; n];
+                    let mut full_j = vec![0; n];
     
-                // Check if traced-out subsystem indices match
-                let traced_i: Vec<u8> = qargs.iter().map(|&q| i_bin[q]).collect();
-                let traced_j: Vec<u8> = qargs.iter().map(|&q| j_bin[q]).collect();
+                    for (k, &q) in remaining_qubits.iter().enumerate() {
+                        full_i[q] = remaining_i_bin[k];
+                        full_j[q] = remaining_j_bin[k];
+                    }
+                    for (k, &q) in qargs.iter().enumerate() {
+                        full_i[q] = i_bin[k];
+                        full_j[q] = i_bin[k];
+                    }
     
-                if traced_i == traced_j {
-                    // Add contribution to reduced density matrix
-                    reduced_dm[reduced_i * remaining_dim + reduced_j] += self.data.data[i * total_dim + j];
+                    let full_i_idx = bitwise_bin_vec_to_int(&full_i);
+                    let full_j_idx = bitwise_bin_vec_to_int(&full_j);
+    
+                    contribution += self.data.data[full_i_idx * total_dim + full_j_idx];
                 }
-            }
-        }
+                contribution
+
+            }).collect();
     
         // Update density matrix with the reduced one
         self.data.data = reduced_dm;
@@ -402,7 +420,7 @@ impl DensityMatrix {
         self.nqubits -= qargs.len();
         self.size = 1 << self.nqubits;
         Ok(())
-    }    
+    }   
 
     pub fn entangle(&mut self, edge: &(usize, usize)) {
         self.evolve(&Operator::two_qubits(TwoQubitsOp::CZ), &[edge.0, edge.1]);

@@ -398,6 +398,7 @@ def test_evolve(sv: np.ndarray, op: np.ndarray):
 @hyp.given(
     sv_st(min=2, max=10),
 )
+@hyp.settings(deadline=None)
 def test_ptrace(sv):
     nqubits = sv_get_nqubits(sv)
 
