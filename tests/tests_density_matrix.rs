@@ -1405,6 +1405,29 @@ mod tests_dm {
     }
 
     #[test]
+    fn test_kron_specific() {
+        let dm_vec = vec![Complex::new(0.06159174, 0.), Complex::new(0., 0.24041256), Complex::new(0., -0.24041256), Complex::new(0.93840826, 0.)];
+        let dm_tensor = Tensor::from_vec(&dm_vec, vec![2, 2]);
+        let mut rho_1 = DensityMatrix::from_tensor(dm_tensor).unwrap();
+        let rho_2 = DensityMatrix::new(1, State::PLUS);
+
+        rho_1.tensor(&rho_2);
+
+        let expected_data: Vec<Complex<f64>> = vec![
+            Complex::new(0.03079587, 0.), Complex::new(0.03079587, 0.), Complex::new(0., 0.12020628), Complex::new(0., 0.12020628),
+            Complex::new(0.03079587, 0.), Complex::new(0.03079587, 0.), Complex::new(0., 0.12020628), Complex::new(0., 0.12020628),
+            Complex::new(0., -0.12020628), Complex::new(0., -0.12020628), Complex::new(0.46920413, 0.), Complex::new(0.46920413, 0.),
+            Complex::new(0., -0.12020628), Complex::new(0., -0.12020628), Complex::new(0.46920413, 0.), Complex::new(0.46920413, 0.)
+        ];
+
+
+        let expected_dm = DensityMatrix::from_tensor(Tensor { data: expected_data, shape: vec![2, 2, 2, 2] }).unwrap();
+
+        let tol = 1e-10;
+        assert!(rho_1.equals(expected_dm, tol));
+    }
+
+    #[test]
     fn test_trace_pure_state() {
         let pure_states = vec![State::ZERO, State::PLUS, State::ONE, State::MINUS];
         for state in pure_states {

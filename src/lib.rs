@@ -176,6 +176,16 @@ fn dm_simu_rs<'py>(
     m.add_function(pyo3::wrap_pyfunction!(expectation_single, m)?)?;
 
     #[pyo3::pyfunction]
+    fn ptrace<'py>(
+        dm: PyVec<'py>,
+        qargs: Vec<usize>
+    ) -> pyo3::prelude::PyResult<()> {
+        let dm = get_dm_mut_ref(dm);
+        Ok(dm.ptrace(&qargs.as_slice()).unwrap())
+    }
+    m.add_function(pyo3::wrap_pyfunction!(ptrace, m)?)?;
+
+    #[pyo3::pyfunction]
     fn set<'py>(
         py: pyo3::prelude::Python<'py>,
         new_dm: numpy::borrow::PyReadonlyArrayDyn<Complex<f64>>,

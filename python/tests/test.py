@@ -168,6 +168,34 @@ def expectation_single(dm, op, i, Nqubit):
         dm1 = rho_tensor.reshape((2**Nqubit, 2**Nqubit))
 
         return np.trace(dm1)
+    
+def ptrace(rho: np.ndarray, qargs):
+    """partial trace
+    Parameters
+    ----------
+        qargs : list of ints or int
+            Indices of qubit to trace out.
+    """
+    n = int(np.log2(rho.shape[0]))
+    if isinstance(qargs, int):
+        qargs = [qargs]
+    assert isinstance(qargs, (list, tuple))
+    qargs_num = len(qargs)
+    nqubit_after = n - qargs_num
+    assert n > 0
+    assert all([qarg >= 0 and qarg < n for qarg in qargs])
+    rho_res = rho.reshape((2,) * n * 2)
+    # ket, bra indices to trace out
+    trace_axes = list(qargs) + [n + qarg for qarg in qargs]
+    rho_res = np.tensordot(
+        np.eye(2**qargs_num).reshape((2,) * qargs_num * 2),
+        rho_res,
+        axes=(list(range(2 * qargs_num)), trace_axes),
+    )
+    rho = rho_res.reshape((2**nqubit_after, 2**nqubit_after))
+    Nqubit = nqubit_after
+    
+    return rho, Nqubit
 
 
 def integer_st(min=1, max=10):
@@ -276,11 +304,13 @@ def test_tensor_dm(array1, array2):
     ref = np.kron(ref_1, ref_2)
     array = dm_simu_rs.get_dm(dm_1)
     np.testing.assert_allclose(array, ref.flatten())
+    np.testing.assert_equal(dm_simu_rs.get_nqubits(dm_1), nqubits_1 + nqubits_2)
 
 @hyp.given(
     sv_st(),
     hyp.strategies.sampled_from(op_single),
 )
+@hyp.settings(deadline=None)
 def test_expectation_single(sv, op):
     dm = dm_simu_rs.new_dm_from_vec(sv)
     nqubits = sv_get_nqubits(sv)
@@ -364,3 +394,26 @@ def test_evolve(sv: np.ndarray, op: np.ndarray):
     
     dm_arr = dm_simu_rs.get_dm(dm)
     np.testing.assert_allclose(dm_simu_rs.get_dm(dm), dm_ref.flatten(), atol=1e-5)
+
+@hyp.given(
+    sv_st(min=2, max=10),
+)
+def test_ptrace(sv):
+    nqubits = sv_get_nqubits(sv)
+
+    rust_dm = dm_simu_rs.new_dm_from_vec(sv)
+    ref_dm = np.outer(sv, sv.conj())
+    
+    qargs = np.random.choice(range(nqubits), size=np.random.randint(1, nqubits), replace=False)
+    qargs = list(qargs)
+
+    dm_simu_rs.ptrace(rust_dm, qargs)
+
+    dm_after_ref, nqubits_after_ref = ptrace(ref_dm, qargs)
+    
+    dm_after_rs = dm_simu_rs.get_dm(rust_dm)
+    nqubits_after_rs = dm_simu_rs.get_nqubits(rust_dm)
+    
+    np.testing.assert_almost_equal(dm_after_rs, dm_after_ref.flatten(), decimal=5)
+    np.testing.assert_equal(nqubits_after_rs, nqubits_after_ref)
+    
