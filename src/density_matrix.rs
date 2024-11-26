@@ -400,7 +400,7 @@ impl DensityMatrix {
         }
         self.data.shape = shape;
         self.nqubits -= qargs.len();
-    
+        self.size = 1 << self.nqubits;
         Ok(())
     }    
 
