@@ -234,7 +234,7 @@ mod tests_dm {
     #[test]
     fn test_one_qubit_evolve_single_i() {
         let mut rho = DensityMatrix::new(1, State::ZERO);
-        rho.evolve_single(&Operator::one_qubit(OneQubitOp::I), 0);
+        rho.evolve_single(&Operator::one_qubit(OneQubitOp::I), 0).unwrap();
 
         let expected_data = &[
             Complex::new(1., 0.),
@@ -247,7 +247,7 @@ mod tests_dm {
     #[test]
     fn test_one_qubit_evolve_single_h() {
         let mut rho = DensityMatrix::new(1, State::ZERO);
-        rho.evolve_single(&Operator::one_qubit(OneQubitOp::H), 0);
+        rho.evolve_single(&Operator::one_qubit(OneQubitOp::H), 0).unwrap();
         let expected_data = Tensor::from_vec(
             &[
                 Complex::new(0.5, 0.),
@@ -272,7 +272,7 @@ mod tests_dm {
     #[test]
     fn test_one_qubit_evolve_single_x() {
         let mut rho = DensityMatrix::new(1, State::ZERO);
-        rho.evolve_single(&Operator::one_qubit(OneQubitOp::X), 0);
+        rho.evolve_single(&Operator::one_qubit(OneQubitOp::X), 0).unwrap();
         let expected_data = Tensor::from_vec(
             &[
                 Complex::new(0., 0.),
@@ -297,7 +297,7 @@ mod tests_dm {
     #[test]
     fn test_one_qubit_evolve_single_y() {
         let mut rho = DensityMatrix::new(1, State::ZERO);
-        rho.evolve_single(&Operator::one_qubit(OneQubitOp::Y), 0);
+        rho.evolve_single(&Operator::one_qubit(OneQubitOp::Y), 0).unwrap();
         let expected_data = Tensor::from_vec(
             &[
                 Complex::new(0., 0.),
@@ -322,7 +322,7 @@ mod tests_dm {
     #[test]
     fn test_one_qubit_evolve_single_z() {
         let mut rho = DensityMatrix::new(1, State::ZERO);
-        rho.evolve_single(&Operator::one_qubit(OneQubitOp::Z), 0);
+        rho.evolve_single(&Operator::one_qubit(OneQubitOp::Z), 0).unwrap();
         let expected_data = Tensor::from_vec(
             &[
                 Complex::new(1., 0.),
@@ -344,10 +344,42 @@ mod tests_dm {
             true
         );
     }
+
+    fn compare_matrices(m1: &[Complex<f64>], m2: &[Complex<f64>], tol: f64) -> bool {
+        m1.iter().zip(m2.iter()).all(|(a, b)| (a - b).norm() < tol)
+    }
+    
+    #[test]
+
+    fn test_one_qubit_evolve_single_i_2() {
+        let mut rho = DensityMatrix::new(1, State::PLUS);
+        rho.evolve_single(&Operator::one_qubit(OneQubitOp::I), 0).unwrap();
+        println!("{rho:}");
+        
+        let expected_data = Tensor::from_vec(
+            &[
+                Complex::new(0.5, 0.),
+                Complex::new(0.5, 0.),
+                Complex::new(0.5, 0.),
+                Complex::new(0.5, 0.),
+            ],
+            vec![2, 2],
+        );
+    
+        assert!(
+            compare_matrices(
+                rho.data.data.as_slice(),
+                expected_data.data.as_slice(),
+                TOLERANCE
+            ),
+            "The density matrix does not match the expected result."
+        );
+    }
+    
     #[test]
     fn test_two_qubits_evolve_single_i() {
         let mut rho = DensityMatrix::new(2, State::ZERO);
-        rho.evolve_single(&Operator::one_qubit(OneQubitOp::I), 0);
+        rho.evolve_single(&Operator::one_qubit(OneQubitOp::I), 0).unwrap();
         let expected_data = Tensor::from_vec(
             &[
                 Complex::new(1., 0.),
@@ -384,7 +416,7 @@ mod tests_dm {
     #[test]
     fn test_two_qubits_evolve_single_h() {
         let mut rho = DensityMatrix::new(2, State::ZERO);
-        rho.evolve_single(&Operator::one_qubit(OneQubitOp::H), 0);
+        rho.evolve_single(&Operator::one_qubit(OneQubitOp::H), 0).unwrap();
         let expected_data = Tensor::from_vec(
             &[
                 Complex::new(0.5, 0.),
@@ -421,7 +453,7 @@ mod tests_dm {
     #[test]
     fn test_two_qubits_evolve_single_x() {
         let mut rho = DensityMatrix::new(2, State::ZERO);
-        rho.evolve_single(&Operator::one_qubit(OneQubitOp::X), 0);
+        rho.evolve_single(&Operator::one_qubit(OneQubitOp::X), 0).unwrap();
         let expected_data = Tensor::from_vec(
             &[
                 Complex::new(0., 0.),

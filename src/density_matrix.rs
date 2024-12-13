@@ -236,25 +236,48 @@ impl DensityMatrix {
             return Err(format!("Passed operator is not a one qubit operator."));
         }
 
-        self.data = op.data.tensordot(&self.data, (&[1], &[index])).unwrap();
-        self.data = self
-            .data
-            .tensordot(
-                &Tensor::from_vec(&op.transconj().data.data, vec![2, 2]),
-                (&[index + self.nqubits], &[0]),
-            )
-            .unwrap();
-        self.data = self
-            .data
-            .moveaxis(
-                &[0, (self.data.shape.len() - 1).try_into().unwrap()],
-                &[
-                    index.try_into().unwrap(),
-                    (index + self.nqubits).try_into().unwrap(),
-                ],
-            )
-            .unwrap();
+        let dim = 1 << self.nqubits;
+        let position_bitshift = self.nqubits - index - 1;
 
+        let mut new_dm: Vec<Complex<f64>> = (0..dim * dim)
+            .map(|idx| {
+                let i = idx / dim;
+                let j = idx % dim;
+                
+                // Extract bit at position index
+                let b_i = (i >> position_bitshift) & 1;
+                let b_j = (j >> position_bitshift) & 1;
+                
+                let bitmask = 1 << position_bitshift;
+                let i_base = i & !bitmask;
+                let j_base = j & !bitmask;
+
+                let mut sum = Complex::<f64>::ZERO;
+                (0..2).for_each(|p| {
+                    (0..2).for_each(|q| {
+                        let i_prime = i_base | (p << position_bitshift);
+                        let j_prime = j_base | (q << position_bitshift);
+                        
+                        //println!("idx: {idx}, i: {i}, j: {j}, i_prime: {i_prime}, j_prime: {j_prime}");
+                        //println!("op[b_i, p]: {}, self[{}, {}]: {}, op[b_j, q].conj(): {}\n",
+                        //    op.data.data[b_i * 2 + p],
+                        //    i_prime,
+                        //    j_prime,
+                        //    self.data.data[i_prime * dim + j_prime],
+                        //    op.data.data[b_j * 2 + q].conj()
+                        //);
+
+
+                        sum += op.data.data[b_i * 2 + p]
+                            * self.data.data[i_prime * dim + j_prime]
+                            * op.data.data[b_j * 2 + q].conj();
+                        });
+                });
+
+                sum
+            }).collect();
+
+        std::mem::swap(&mut self.data.data, &mut new_dm);
         Ok(())
     }
 
