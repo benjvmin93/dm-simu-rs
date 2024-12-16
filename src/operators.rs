@@ -27,7 +27,24 @@ pub struct Operator {
 
 impl fmt::Display for Operator {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.data.print(f, &self.data.shape, &self.data.data)
+        let dim = 1 << self.nqubits;
+        write!(f, "[")?;
+        for i in 0..dim {
+            write!(f, "[")?;
+            for j in 0..dim {
+                let indices = bitwise_int_to_bin_vec(i * dim + j, 2 * self.nqubits);
+                write!(f, "{}", self.data.get(&indices))?;
+                if j != dim - 1 {
+                    write!(f, ", ")?;
+                }
+            }
+            write!(f, "]")?;
+            if i == dim - 1 {
+                write!(f, "]")?;
+            }
+            writeln!(f, "")?;
+        }
+        writeln!(f, "\n")
     }
 }
 
