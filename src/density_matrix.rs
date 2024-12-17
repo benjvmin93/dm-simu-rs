@@ -2,6 +2,7 @@ use core::fmt;
 use std::collections::HashSet;
 
 use num_complex::Complex;
+use rayon::collections;
 use rayon::iter::{IndexedParallelIterator, IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
 use tensor::Tensor;
 
@@ -284,80 +285,91 @@ impl DensityMatrix {
     }
 
     pub fn evolve(&mut self, op: &Operator, indices: &[usize]) -> Result<(), String> {
-        let n_targets = indices.len();
-        if indices.iter().any(|&index| index >= self.nqubits) {
-            return Err(format!(
-                "One or more target qubits are out of range [0-{}].",
-                self.nqubits
-            ));
+        if !are_elements_unique(indices) {
+            return Err("Target qubits must be unique.".to_string());
         }
-        if op.nqubits != n_targets {
-            return Err(format!(
-                "Operator acts on {} qubits, but {} were provided.",
-                op.nqubits, n_targets
-            ));
-        }
-    
-        let dim = 1 << self.nqubits;
-    
-        // Compute target positions and masks
-        let target_positions: Vec<_> = indices
-            .iter()
-            .map(|&index| self.nqubits - index - 1)
-            .collect();
-        let target_mask = indices.iter().fold(0, |mask, &index| mask | (1 << (self.nqubits - index - 1)));
-    
-        // New density matrix
-        let mut new_dm = vec![Complex::ZERO; dim * dim];
-    
-        for i in 0..dim {
-            for j in 0..dim {
-                let b_i = target_positions.iter().enumerate().fold(0, |acc, (k, &pos)| {
-                    acc | (((i >> pos) & 1) << k)
-                });
-                let b_j = target_positions.iter().enumerate().fold(0, |acc, (k, &pos)| {
-                    acc | (((j >> pos) & 1) << k)
-                });
-    
-                // Debug: Print b_i and b_j
-                // println!("i: {i}, j: {j}, b_i: {b_i}, b_j: {b_j}");
-    
-                let i_base = i & !target_mask;
-                let j_base = j & !target_mask;
-    
-                let mut sum = Complex::ZERO;
-    
-                for p in 0..(1 << n_targets) {
-                    for q in 0..(1 << n_targets) {
-                        let i_prime = i_base | target_positions.iter().enumerate().fold(0, |acc, (k, &pos)| {
-                            acc | (((p >> k) & 1) << pos)
-                        });
-                        let j_prime = j_base | target_positions.iter().enumerate().fold(0, |acc, (k, &pos)| {
-                            acc | (((q >> k) & 1) << pos)
-                        });
-    
-                        // Debug: Print i_prime, j_prime, and contributions to the sum
-                        // println!(
-                        //     "p: {p}, q: {q}, i_prime: {i_prime}, j_prime: {j_prime}, op(p,q): {}, rho(i',j'): {}",
-                        //     op.data.data[b_i * (1 << n_targets) + p],
-                        //     self.data.data[i_prime * dim + j_prime]
-                        // );
-    
-                        sum += op.data.data[b_i * (1 << n_targets) + p]
-                            * self.data.data[i_prime * dim + j_prime]
-                            * op.data.data[b_j * (1 << n_targets) + q].conj();
-                    }
-                }
-    
-                new_dm[i * dim + j] = sum;
+        for &i in indices.iter() {
+            if i >= self.nqubits {
+                return Err(format!(
+                    "Target qubit {} is not in the range [0-{}].",
+                    i, self.nqubits
+                ));
             }
-        }
-    
-        self.data.data = new_dm;
-        println!("RHO AFTER EVOLVE:\n{self}");
+        };
+
+        let dim: usize = 1 << self.nqubits;
+        let op_dim = 1 << op.nqubits;
+
+        // Pre compute the bit shifts for each target qubit
+        let position_bitshifts: Vec<usize> = indices.iter().map(|i| self.nqubits - i - 1).collect();
+
+        // Pre compute bitsmask with all target qubits to 1 and others to 0
+        let bitmask: usize = position_bitshifts.iter().map(|&bitshift| 1 << bitshift).sum();
+        println!("bitmask: {bitmask:b}");
+
+        let mut new_dm: Vec<Complex<f64>> = (0..dim * dim)
+            .map(|idx| {
+                let i = idx / dim;
+                let j = idx % dim;
+
+                // Extract target qubits' bits for i and j
+                let b_i: usize = position_bitshifts
+                    .iter()
+                    .enumerate()
+                    .map(|(k, &bitshift)| ((i >> bitshift) & 1) << k)
+                    .sum();
+
+                let b_j: usize = position_bitshifts
+                    .iter()
+                    .enumerate()
+                    .map(|(k, &bitshift)| ((j >> bitshift) & 1) << k)
+                    .sum();
+
+                println!("i: {:b}, j: {:b}", i, j);
+                println!("b_i: {:b}, b_j: {:b}", b_i, b_j);
+
+                // Mask out target qubits to get base indices
+                // ie. indices with the targets to 0 and others unchanged
+                let i_base = i & !bitmask;
+                let j_base = j & !bitmask;
+
+                println!("i_base: {:b}, j_base: {:b}", i_base, j_base);
+
+                let mut sum: Complex<f64> = Complex::ZERO;
+
+                (0..op_dim * op_dim).for_each(|op_idx|{
+                    let p = op_idx / op_dim;
+                    let q = op_idx % op_dim;
+
+                    // Reconstruct indices with target bits set to (p, q)
+                    let i_prime = i_base | position_bitshifts
+                        .iter()
+                        .enumerate()
+                        .map(|(k, &bitshift)| ((p >> position_bitshifts.len() - k - 1) & 1) << bitshift)
+                        .sum::<usize>();
+
+                    let j_prime = j_base | position_bitshifts
+                        .iter()
+                        .enumerate()
+                        .map(|(k, &bitshift)| ((q >> position_bitshifts.len() - k - 1) & 1) << bitshift)
+                        .sum::<usize>();
+
+                    
+                    
+                    println!("i_prime: {:b}, j_prime: {:b}", i_prime, j_prime);
+
+                    sum += op.data.data[b_i * op_dim + p]
+                        * self.data.data[i_prime * dim + j_prime]
+                        * op.data.data[b_j * op_dim + q].conj();
+                });
+                println!("===========================");
+                sum
+            }).collect();
+
+        std::mem::swap(&mut self.data.data, &mut new_dm);
+        println!("RHO AFTER EVOLVE:\n{self:}");
         Ok(())
     }
-    
 
     pub fn equals(&self, other: DensityMatrix, tol: f64) -> bool {
         if self.data.shape.iter().product::<usize>() == other.data.shape.iter().product::<usize>() {
