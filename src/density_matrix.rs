@@ -295,79 +295,43 @@ impl DensityMatrix {
                     i, self.nqubits
                 ));
             }
-        };
+        }
 
-        let dim: usize = 1 << self.nqubits;
-        let op_dim = 1 << op.nqubits;
+        let nqb_op = op.nqubits;
+        let first_axe = (0..indices.len())
+            .map(|i| nqb_op + i)
+            .collect::<Vec<usize>>();
+        let second_axe = indices;
+        self.data = op
+            .data
+            .tensordot(&self.data, (&first_axe, &second_axe))
+            .unwrap();
 
-        // Pre compute the bit shifts for each target qubit
-        let position_bitshifts: Vec<usize> = indices.iter().map(|i| self.nqubits - i - 1).collect();
+        let op_transconj = op.transconj();
+        let first_axe = indices
+            .iter()
+            .map(|i| i + self.nqubits)
+            .collect::<Vec<usize>>();
+        let second_axe = (0..indices.len()).collect::<Vec<usize>>();
+        self.data = self
+            .data
+            .tensordot(&op_transconj.data, (&first_axe, &second_axe))
+            .unwrap();
 
-        // Pre compute bitsmask with all target qubits to 1 and others to 0
-        let bitmask: usize = position_bitshifts.iter().map(|&bitshift| 1 << bitshift).sum();
-        // println!("bitmask: {bitmask:b}");
+        let moveaxis_src_first = (0..indices.len() as i32).collect::<Vec<i32>>();
+        let moveaxis_src_second = (1..(indices.len() + 1) as i32).map(|i| -i).collect();
+        let src = [moveaxis_src_first, moveaxis_src_second].concat();
 
-        let mut new_dm: Vec<Complex<f64>> = (0..dim * dim)
-            .map(|idx| {
-                let i = idx / dim;
-                let j = idx % dim;
+        let moveaxis_dest_first = indices.iter().map(|&i| i as i32).collect::<Vec<i32>>();
+        let moveaxis_dest_second = indices
+            .iter()
+            .rev()
+            .map(|&i| i as i32 + self.nqubits as i32)
+            .collect();
+        let dst = [moveaxis_dest_first, moveaxis_dest_second].concat();
 
-                // Extract target qubits' bits for i and j
-                let b_i: usize = position_bitshifts
-                    .iter()
-                    .enumerate()
-                    .map(|(k, &bitshift)| ((i >> bitshift) & 1) << k)
-                    .sum();
+        self.data = self.data.moveaxis(&src, &dst).unwrap();
 
-                let b_j: usize = position_bitshifts
-                    .iter()
-                    .enumerate()
-                    .map(|(k, &bitshift)| ((j >> bitshift) & 1) << k)
-                    .sum();
-
-                // println!("i: {:b}, j: {:b}", i, j);
-                // println!("b_i: {:b}, b_j: {:b}", b_i, b_j);
-
-                // Mask out target qubits to get base indices
-                // ie. indices with the targets to 0 and others unchanged
-                let i_base = i & !bitmask;
-                let j_base = j & !bitmask;
-
-                println!("i_base: {:b}, j_base: {:b}", i_base, j_base);
-
-                let mut sum: Complex<f64> = Complex::ZERO;
-
-                (0..op_dim * op_dim).for_each(|op_idx|{
-                    let p = op_idx / op_dim;
-                    let q = op_idx % op_dim;
-
-                    // Reconstruct indices with target bits set to (p, q)
-                    let i_prime = i_base | position_bitshifts
-                        .iter()
-                        .enumerate()
-                        .map(|(k, &bitshift)| ((p >> position_bitshifts.len() - k - 1) & 1) << bitshift)
-                        .sum::<usize>();
-
-                    let j_prime = j_base | position_bitshifts
-                        .iter()
-                        .enumerate()
-                        .map(|(k, &bitshift)| ((q >> position_bitshifts.len() - k - 1) & 1) << bitshift)
-                        .sum::<usize>();
-
-                    
-                    
-                    // println!("i_prime: {:b}, j_prime: {:b}", i_prime, j_prime);
-
-                    sum += op.data.data[b_i * op_dim + p]
-                        * self.data.data[i_prime * dim + j_prime]
-                        * op.data.data[b_j * op_dim + q].conj();
-                });
-                // println!("===========================");
-                sum
-            }).collect();
-
-        std::mem::swap(&mut self.data.data, &mut new_dm);
-        // println!("RHO AFTER EVOLVE:\n{self:}");
         Ok(())
     }
 
@@ -437,7 +401,7 @@ impl DensityMatrix {
         
         // Use a parallel iterator for the outer loop
         let reduced_dm = (0..remaining_dim * remaining_dim)
-            .into_par_iter()
+            .into_iter()
             .map(|idx| {
                 let reduced_i = idx / remaining_dim;
                 let reduced_j = idx % remaining_dim;
