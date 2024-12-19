@@ -264,6 +264,10 @@ impl DensityMatrix {
                     // and according to the operator indices
                     let i_prime = i_base | (p << position_bitshift);
                     let j_prime = j_base | (q << position_bitshift);
+                    let data_idx = i_prime * dim + j_prime;
+                    if self.data.data[data_idx] == Complex::ZERO {
+                        return;
+                    }
                     
                     // println!("idx: {idx}, i: {i}, j: {j}, i_prime: {i_prime}, j_prime: {j_prime}");
                     // println!("op[b_i, p]: {}, self[{}, {}]: {}, op[b_j, q].conj(): {}\n",
