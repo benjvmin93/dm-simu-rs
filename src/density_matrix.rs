@@ -265,14 +265,14 @@ impl DensityMatrix {
                     let i_prime = i_base | (p << position_bitshift);
                     let j_prime = j_base | (q << position_bitshift);
                     
-                    println!("idx: {idx}, i: {i}, j: {j}, i_prime: {i_prime}, j_prime: {j_prime}");
-                    println!("op[b_i, p]: {}, self[{}, {}]: {}, op[b_j, q].conj(): {}\n",
-                        op.data.data[b_i * 2 + p],
-                        i_prime,
-                        j_prime,
-                        self.data.data[i_prime * dim + j_prime],
-                        op.data.data[b_j * 2 + q].conj()
-                    );
+                    // println!("idx: {idx}, i: {i}, j: {j}, i_prime: {i_prime}, j_prime: {j_prime}");
+                    // println!("op[b_i, p]: {}, self[{}, {}]: {}, op[b_j, q].conj(): {}\n",
+                    //     op.data.data[b_i * 2 + p],
+                    //     i_prime,
+                    //     j_prime,
+                    //     self.data.data[i_prime * dim + j_prime],
+                    //     op.data.data[b_j * 2 + q].conj()
+                    // );
                     sum += op.data.data[b_i * 2 + p]
                         * self.data.data[i_prime * dim + j_prime]
                         * op.data.data[b_j * 2 + q].conj();
@@ -305,7 +305,7 @@ impl DensityMatrix {
 
         // Pre compute bitsmask with all target qubits to 1 and others to 0
         let bitmask: usize = position_bitshifts.iter().map(|&bitshift| 1 << bitshift).sum();
-        println!("bitmask: {bitmask:b}");
+        // println!("bitmask: {bitmask:b}");
 
         let mut new_dm: Vec<Complex<f64>> = (0..dim * dim)
             .map(|idx| {
@@ -325,8 +325,8 @@ impl DensityMatrix {
                     .map(|(k, &bitshift)| ((j >> bitshift) & 1) << k)
                     .sum();
 
-                println!("i: {:b}, j: {:b}", i, j);
-                println!("b_i: {:b}, b_j: {:b}", b_i, b_j);
+                // println!("i: {:b}, j: {:b}", i, j);
+                // println!("b_i: {:b}, b_j: {:b}", b_i, b_j);
 
                 // Mask out target qubits to get base indices
                 // ie. indices with the targets to 0 and others unchanged
@@ -356,18 +356,18 @@ impl DensityMatrix {
 
                     
                     
-                    println!("i_prime: {:b}, j_prime: {:b}", i_prime, j_prime);
+                    // println!("i_prime: {:b}, j_prime: {:b}", i_prime, j_prime);
 
                     sum += op.data.data[b_i * op_dim + p]
                         * self.data.data[i_prime * dim + j_prime]
                         * op.data.data[b_j * op_dim + q].conj();
                 });
-                println!("===========================");
+                // println!("===========================");
                 sum
             }).collect();
 
         std::mem::swap(&mut self.data.data, &mut new_dm);
-        println!("RHO AFTER EVOLVE:\n{self:}");
+        // println!("RHO AFTER EVOLVE:\n{self:}");
         Ok(())
     }
 
@@ -441,32 +441,28 @@ impl DensityMatrix {
             .map(|idx| {
                 let reduced_i = idx / remaining_dim;
                 let reduced_j = idx % remaining_dim;
-    
-                let remaining_i_bin = bitwise_int_to_bin_vec(reduced_i, remaining_qubits.len());
-                let remaining_j_bin = bitwise_int_to_bin_vec(reduced_j, remaining_qubits.len());
-    
+
                 let mut contribution = Complex::ZERO;
-    
+
                 for i in 0..(1 << qargs.len()) {
-                    let i_bin = bitwise_int_to_bin_vec(i, qargs.len());
-    
                     // Map remaining and traced indices back to the full index space
-                    let mut full_i = vec![0; n];
-                    let mut full_j = vec![0; n];
-    
+                    let mut full_i = 0;
+                    let mut full_j = 0;
+
                     for (k, &q) in remaining_qubits.iter().enumerate() {
-                        full_i[q] = remaining_i_bin[k];
-                        full_j[q] = remaining_j_bin[k];
+                        let new_pos = n - q - 1;
+                        full_i |= ((reduced_i >> remaining_qubits.len() - k - 1) & 1) << new_pos;
+                        full_j |= ((reduced_j >> remaining_qubits.len() - k - 1) & 1) << new_pos;
                     }
+
                     for (k, &q) in qargs.iter().enumerate() {
-                        full_i[q] = i_bin[k];
-                        full_j[q] = i_bin[k];
+                        let bit_value = (i >> qargs.len() - k - 1) & 1;
+                        let new_pos = n - q - 1;
+                        full_i |= bit_value << new_pos;
+                        full_j |= bit_value << new_pos;
                     }
     
-                    let full_i_idx = bitwise_bin_vec_to_int(&full_i);
-                    let full_j_idx = bitwise_bin_vec_to_int(&full_j);
-    
-                    contribution += self.data.data[full_i_idx * total_dim + full_j_idx];
+                    contribution += self.data.data[full_i * total_dim + full_j];
                 }
                 contribution
 
@@ -482,7 +478,7 @@ impl DensityMatrix {
         self.nqubits -= qargs.len();
         self.size = 1 << self.nqubits;
         Ok(())
-    }   
+    }  
 
     pub fn entangle(&mut self, edge: &(usize, usize)) {
         self.evolve(&Operator::two_qubits(TwoQubitsOp::CZ), &[edge.0, edge.1]);
