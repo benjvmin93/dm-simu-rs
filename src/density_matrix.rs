@@ -2,13 +2,11 @@ use core::fmt;
 use std::collections::HashSet;
 
 use num_complex::Complex;
-use rayon::collections;
-use rayon::iter::{IndexedParallelIterator, IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
-use tensor::Tensor;
+use num_traits::ConstZero;
+use rayon::iter::{IndexedParallelIterator, IntoParallelRefIterator, ParallelIterator};
 
-use crate::operators::{OneQubitOp, Operator, TwoQubitsOp};
-use crate::tensor;
-use crate::tools::{are_elements_unique, bitwise_bin_vec_to_int, bitwise_int_to_bin_vec, complex_approx_eq};
+use crate::operators::{Operator, TwoQubitsOp};
+use crate::tools::{are_elements_unique, complex_approx_eq};
 
 #[pyo3::pyclass]
 #[derive(Debug, Copy, Clone)]
@@ -21,7 +19,7 @@ pub enum State {
 
 // 1D representation of a size * size density matrix.
 pub struct DensityMatrix {
-    pub data: Tensor<Complex<f64>>,
+    pub data: Vec<Complex<f64>>,
     pub size: usize, // 2 ** nqubits
     pub nqubits: usize,
 }
@@ -36,17 +34,15 @@ impl DensityMatrix {
     // By default initialize in |0>.
     pub fn new(nqubits: usize, initial_state: State) -> Self {
         let size = 1 << nqubits;
-        let shape = 2 * nqubits;
         match initial_state {
             State::PLUS => {
                 // Set density matrix to |+><+| \otimes n
                 let mut dm = Self {
-                    data: Tensor::from_vec(&vec![Complex::ONE; size * size], vec![2; shape]),
+                    data: vec![Complex::ONE; size * size],
                     size,
                     nqubits,
                 };
-                dm.data.data = dm
-                    .data
+                dm.data = dm
                     .data
                     .iter()
                     .map(|n| *n / Complex::new(size as f64, 0.))
@@ -56,28 +52,26 @@ impl DensityMatrix {
             State::ZERO => {
                 // Set density matrix to |0><0| \otimes n
                 let mut dm = Self {
-                    data: Tensor::from_vec(&vec![Complex::ZERO; size * size], vec![2; shape]),
+                    data: vec![Complex::ZERO; size * size],
                     size,
                     nqubits,
                 };
-                let indices = bitwise_int_to_bin_vec(0, shape);
-                dm.data.set(&indices, Complex::ONE);
+                dm.data[0] = Complex::ONE;
                 dm
             }
             State::ONE => {
                 let mut dm = Self {
-                    data: Tensor::from_vec(&vec![Complex::ZERO; size * size], vec![2; shape]),
+                    data: vec![Complex::ZERO; size * size],
                     size,
                     nqubits,
                 };
                 // Generate the binary vector for |1>
-                let indices = bitwise_int_to_bin_vec((size * size) - 1, shape);
-                dm.data.set(&indices, Complex::ONE);
+                dm.data[size * size - 1] =  Complex::ONE;
                 dm
             }
             State::MINUS => {
                 let mut dm = Self {
-                    data: Tensor::from_vec(&vec![Complex::ZERO; size * size], vec![2; shape]),
+                    data: vec![Complex::ZERO; size * size],
                     size,
                     nqubits,
                 };
@@ -92,8 +86,7 @@ impl DensityMatrix {
                             -Complex::ONE
                         };
                         let value = factor * sign;
-                        let indices = bitwise_int_to_bin_vec(i * size + j, shape);
-                        dm.data.set(&indices, value);
+                        dm.data[i * size + j] = value;
                     }
                 }
                 println!("dm = {}", dm);
@@ -117,29 +110,27 @@ impl DensityMatrix {
             }
         }
         Ok(DensityMatrix {
-            data: Tensor::from_vec(&data, vec![2; 2 * nqubits]),
+            data,
             size,
             nqubits,
         })
     }
 
-    pub fn from_tensor(tensor: Tensor<Complex<f64>>) -> Result<Self, &'static str> {
-        let size: usize = tensor.shape.iter().product();
-        if !size.is_power_of_two() {
-            return Err("Tensor size is not a power of two.");
+    pub fn from_vec(vec: &[Complex<f64>]) -> Result<Self, &'static str> {
+        let len = vec.len();
+        if !len.is_power_of_two() {
+            return Err("The size of the matrix is not a power of two");
         }
-
-        let n = (size as f32).log2();
-        if n % 2.0 != 0. {
-            return Err("Tensor size is not valid. It should be of size 2^(2n) with n the number of qubits.");
+        let dim = len.ilog2() as usize;
+        if dim % 2 != 0 {
+            return Err("The dimensions of the matrix are not consistent");
         }
-        let nqubits = (n / 2.) as usize;
 
         Ok(DensityMatrix {
-            data: tensor,
-            size: 2_i32.pow(nqubits as u32) as usize,
-            nqubits,
-        })
+            data: vec.to_vec(),
+            size: dim,
+            nqubits: dim / 2
+        })        
     }
 
     pub fn print(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -147,8 +138,7 @@ impl DensityMatrix {
         for i in 0..self.size {
             write!(f, "[")?;
             for j in 0..self.size {
-                let indices = bitwise_int_to_bin_vec(i * self.size + j, 2 * self.nqubits);
-                write!(f, "{}", self.data.get(&indices))?;
+                write!(f, "{}", self.data[i * self.size + j])?;
                 if j != self.size - 1 {
                     write!(f, ", ")?;
                 }
@@ -163,17 +153,13 @@ impl DensityMatrix {
     }
 
     // Access element at row i and column j
-    pub fn get(&self, i: u8, j: u8) -> Complex<f64> {
-        let idx = i * self.size as u8 + j;
-        let bin_idx = bitwise_int_to_bin_vec(idx.into(), 2 * self.nqubits);
-        *self.data.get(&bin_idx)
+    pub fn get(&self, i: usize, j: usize) -> Complex<f64> {
+        self.data[i * self.size + j]
     }
 
     // Set element at row i and column j
-    pub fn set(&mut self, i: u8, j: u8, value: Complex<f64>) {
-        let size = self.size as u8;
-        let indices = bitwise_int_to_bin_vec((i * size + j) as usize, 2 * self.nqubits);
-        self.data.set(&indices, value);
+    pub fn set(&mut self, i: usize, j: usize, value: Complex<f64>) {
+        self.data[i * self.size + j] =  value;
     }
 
     pub fn expectation_single(
@@ -188,10 +174,10 @@ impl DensityMatrix {
         let index_mask = 1 << (self.nqubits - index - 1);
     
         // Parallel computation of expectation
-        let expectation = self.data.data
+        let expectation = self.data
             .par_iter()
             .enumerate()
-            .map(|(idx, rho_elt)| {
+            .map(|(idx, &rho_elt)| {
                 let i = idx / self.size;
                 let j = idx % self.size;
     
@@ -199,7 +185,7 @@ impl DensityMatrix {
                     let op_i = (i & index_mask) >> (self.nqubits - index - 1);
                     let op_j = (j & index_mask) >> (self.nqubits - index - 1);
     
-                    rho_elt * op.data.get(&[op_i as u8, op_j as u8])
+                    rho_elt * op.data[op_i * 2 + op_j]
                 } else {
                     Complex::ZERO
                 }
@@ -212,14 +198,13 @@ impl DensityMatrix {
     pub fn trace(&self) -> Complex<f64> {
         // Compute the sum over the diagonal elements.
         (0..self.size)
-            .map(|i| self.get(i as u8, i as u8))
+            .map(|i| self.get(i, i))
             .fold(Complex::ZERO, |acc, x| acc + x) // Fold ensures a starting value
     }
 
     pub fn normalize(&mut self) {
         let trace = self.trace();
-        self.data.data = self
-            .data
+        self.data = self
             .data
             .par_iter()
             .map(|&c| c / trace)
@@ -265,7 +250,7 @@ impl DensityMatrix {
                     let i_prime = i_base | (p << position_bitshift);
                     let j_prime = j_base | (q << position_bitshift);
                     let data_idx = i_prime * dim + j_prime;
-                    if self.data.data[data_idx] == Complex::ZERO {
+                    if self.data[data_idx] == Complex::ZERO {
                         return;
                     }
                     
@@ -277,18 +262,19 @@ impl DensityMatrix {
                     //     self.data.data[i_prime * dim + j_prime],
                     //     op.data.data[b_j * 2 + q].conj()
                     // );
-                    sum += op.data.data[b_i * 2 + p]
-                        * self.data.data[i_prime * dim + j_prime]
-                        * op.data.data[b_j * 2 + q].conj();
+                    sum += op.data[b_i * 2 + p]
+                        * self.data[data_idx]
+                        * op.data[b_j * 2 + q].conj();
                 });
                 sum
             }).collect();
 
-        std::mem::swap(&mut self.data.data, &mut new_dm);
+        std::mem::swap(&mut self.data, &mut new_dm);
         Ok(())
     }
 
     pub fn evolve(&mut self, op: &Operator, indices: &[usize]) -> Result<(), String> {
+        // Check for unique indices
         if !are_elements_unique(indices) {
             return Err("Target qubits must be unique.".to_string());
         }
@@ -300,49 +286,108 @@ impl DensityMatrix {
                 ));
             }
         }
-
-        let nqb_op = op.nqubits;
-        let first_axe = (0..indices.len())
-            .map(|i| nqb_op + i)
-            .collect::<Vec<usize>>();
-        let second_axe = indices;
-        self.data = op
-            .data
-            .tensordot(&self.data, (&first_axe, &second_axe))
-            .unwrap();
-
-        let op_transconj = op.transconj();
-        let first_axe = indices
-            .iter()
-            .map(|i| i + self.nqubits)
-            .collect::<Vec<usize>>();
-        let second_axe = (0..indices.len()).collect::<Vec<usize>>();
-        self.data = self
-            .data
-            .tensordot(&op_transconj.data, (&first_axe, &second_axe))
-            .unwrap();
-
-        let moveaxis_src_first = (0..indices.len() as i32).collect::<Vec<i32>>();
-        let moveaxis_src_second = (1..(indices.len() + 1) as i32).map(|i| -i).collect();
-        let src = [moveaxis_src_first, moveaxis_src_second].concat();
-
-        let moveaxis_dest_first = indices.iter().map(|&i| i as i32).collect::<Vec<i32>>();
-        let moveaxis_dest_second = indices
-            .iter()
-            .rev()
-            .map(|&i| i as i32 + self.nqubits as i32)
-            .collect();
-        let dst = [moveaxis_dest_first, moveaxis_dest_second].concat();
-
-        self.data = self.data.moveaxis(&src, &dst).unwrap();
-
+    
+        // Calculate dimensions
+        let op_dim = 1 << op.nqubits;
+        let dim = 1 << self.nqubits;
+        println!("Operator dimension: {}, Density matrix dimension: {}", op_dim, dim);
+    
+        // Calculate target bitshifts
+        let target_bitshifts: Vec<usize> = indices.iter().map(|i| self.nqubits - i - 1).collect();
+        println!("Target bitshifts: {:?}", target_bitshifts);
+    
+        // Prepare a new density matrix
+        let mut new_dm: Vec<Complex<f64>> = (0..dim * dim)
+            .map(|idx| {
+                let i = idx / dim;
+                let j = idx % dim;
+    
+                // Debug: Current indices in binary representation
+                println!(
+                    "Processing density matrix element: (i: {}, j: {}) -> (i: {:b}, j: {:b})",
+                    i, j, i, j
+                );
+    
+                // Extract bits at target positions and compose bitmask
+                let mut b_i = 0;
+                let mut b_j = 0;
+                let bitmask: usize = target_bitshifts.iter().enumerate().map(|(index, t)| {
+                    b_i |= ((i >> t) & 1) << index;
+                    b_j |= ((j >> t) & 1) << index;
+                    1 << t
+                }).sum();
+    
+                println!(
+                    "b_i: {:b}, b_j: {:b}, bitmask: {:b} for element (i: {:b}, j: {:b})",
+                    b_i, b_j, bitmask, i, j
+                );
+    
+                // Get bits with targets set to 0
+                let i_base = i & !bitmask;
+                let j_base = j & !bitmask;
+    
+                println!(
+                    "i_base: {:b}, j_base: {:b} (i_base: {}, j_base: {})",
+                    i_base, j_base, i_base, j_base
+                );
+    
+                let mut sum = Complex::ZERO;
+    
+                // Iterate over operator indices
+                (0..op_dim * op_dim).for_each(|op_idx| {
+                    let p = op_idx / op_dim;
+                    let q = op_idx % op_dim;
+    
+                    let mut p_prime = 0;
+                    let mut q_prime = 0;
+    
+                    target_bitshifts.iter().enumerate().for_each(|(index, &bitshift)| {
+                        let p_bit = (p >> (op.nqubits - index - 1)) & 1;
+                        let q_bit = (q >> (op.nqubits - index - 1)) & 1;
+                        p_prime |= p_bit << bitshift;
+                        q_prime |= q_bit << bitshift;
+                    });
+    
+                    let i_prime = i_base | p_prime;
+                    let j_prime = j_base | q_prime;
+    
+                    println!(
+                        "op_idx: {}, p: {:b}, q: {:b}, p_prime: {:b}, q_prime: {:b}, i_prime: {:b}, j_prime: {:b}",
+                        op_idx, p, q, p_prime, q_prime, i_prime, j_prime
+                    );
+    
+                    let data_idx = i_prime * dim + j_prime;
+    
+                    if self.data[data_idx] != Complex::ZERO {
+                        let contrib = op.data[b_i * op_dim + p]
+                            * self.data[data_idx]
+                            * op.data[b_j * op_dim + q].conj();
+                        println!(
+                            "Contribution to sum: {} (from data_idx: {}, op indices: {}, {})",
+                            contrib, data_idx, b_i * op_dim + p, b_j * op_dim + q
+                        );
+                        sum += contrib;
+                    }
+                });
+    
+                println!(
+                    "New density matrix element (i: {:b}, j: {:b}): {}",
+                    i, j, sum
+                );
+                sum
+            }).collect();
+    
+        println!("Swapping old density matrix with the new one.");
+        std::mem::swap(&mut self.data, &mut new_dm);
+        println!("Density matrix evolution completed successfully.");
         Ok(())
     }
+    
 
-    pub fn equals(&self, other: DensityMatrix, tol: f64) -> bool {
-        if self.data.shape.iter().product::<usize>() == other.data.shape.iter().product::<usize>() {
-            for i in 0..self.data.data.len() {
-                if complex_approx_eq(self.data.data[i], other.data.data[i], tol) == false {
+    pub fn equals(&self, other: &DensityMatrix, tol: f64) -> bool {
+        if self.data.len() == other.data.len() {
+            for i in 0..self.data.len() {
+                if complex_approx_eq(self.data[i], other.data[i], tol) == false {
                     return false;
                 }
             }
@@ -361,13 +406,12 @@ impl DensityMatrix {
     
         // Calculate the new size and shape for the resulting tensor
         let new_dim = self.size * other.size;
-        let new_shape = vec![2; 2 * self.nqubits];
     
         // Create a new result tensor with the updated shape
-        let mut result = Tensor::new(&new_shape);
+        let mut result = vec![Complex::ZERO; new_dim * new_dim];
     
         // Compute the tensor product in parallel
-        result.data.iter_mut().enumerate().for_each(|(idx, res)| {
+        result.iter_mut().enumerate().for_each(|(idx, res)| {
             // Decompose the linear index into 2D indices (i, j)
             let i = idx / new_dim;
             let j = idx % new_dim;
@@ -377,8 +421,8 @@ impl DensityMatrix {
             let (self_col, other_col) = (j / other.size, j % other.size);
     
             // Retrieve elements from `self` and `other`
-            let self_data = self.data.data[self_row * self.size + self_col];
-            let other_data = other.data.data[other_row * other.size + other_col];
+            let self_data = self.data[self_row * self.size + self_col];
+            let other_data = other.data[other_row * other.size + other_col];
     
             // Compute and store the result
             *res = self_data * other_data;
@@ -430,19 +474,14 @@ impl DensityMatrix {
                         full_j |= bit_value << new_pos;
                     }
     
-                    contribution += self.data.data[full_i * total_dim + full_j];
+                    contribution += self.data[full_i * total_dim + full_j];
                 }
                 contribution
 
             }).collect();
     
         // Update density matrix with the reduced one
-        self.data.data = reduced_dm;
-        let mut shape: Vec<usize> = vec![1];
-        if remaining_qubits.len() != 0 {
-            shape = vec![2; remaining_dim];
-        }
-        self.data.shape = shape;
+        self.data = reduced_dm;
         self.nqubits -= qargs.len();
         self.size = 1 << self.nqubits;
         Ok(())

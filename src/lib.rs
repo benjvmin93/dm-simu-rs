@@ -1,6 +1,5 @@
 pub mod density_matrix;
 pub mod operators;
-pub mod tensor;
 pub mod tools;
 
 use density_matrix::{DensityMatrix, State};
@@ -8,7 +7,6 @@ use num_complex::Complex;
 use numpy::PyArrayMethods;
 use operators::Operator;
 use pyo3::{exceptions::PyTypeError, prelude::*, types::PyComplex};
-use tensor::Tensor;
 
 #[pyo3::pymodule]
 fn dm_simu_rs<'py>(
@@ -79,7 +77,7 @@ fn dm_simu_rs<'py>(
         dm_py_vec: PyVec<'py>,
     ) -> pyo3::prelude::Bound<'py, numpy::array::PyArray1<Complex<f64>>> {
         let dm = get_dm_ref(dm_py_vec);
-        numpy::IntoPyArray::into_pyarray_bound(dm.data.data.to_vec(), py)
+        numpy::IntoPyArray::into_pyarray_bound(dm.data.to_vec(), py)
     }
     m.add_function(pyo3::wrap_pyfunction!(get_dm, m)?)?;
 
@@ -101,7 +99,7 @@ fn dm_simu_rs<'py>(
         op_py_vec: PyVec<'py>,
     ) -> pyo3::prelude::Bound<'py, numpy::array::PyArray1<Complex<f64>>> {
         let op = get_op_ref(op_py_vec);
-        numpy::IntoPyArray::into_pyarray_bound(op.data.data.to_vec(), py)
+        numpy::IntoPyArray::into_pyarray_bound(op.data.to_vec(), py)
     }
     m.add_function(pyo3::wrap_pyfunction!(get_op, m)?)?;
 
@@ -207,8 +205,7 @@ fn dm_simu_rs<'py>(
             new_n /= 2.;
         }
 
-        let new_tensor = Tensor::from_vec(new_dm_vec, vec![2; 2 * new_n as usize]);
-        let _dm = DensityMatrix::from_tensor(new_tensor).unwrap();
+        let _dm = DensityMatrix::from_vec(new_dm_vec).unwrap();
 
         make_dm_pyvec(py, _dm)
     }

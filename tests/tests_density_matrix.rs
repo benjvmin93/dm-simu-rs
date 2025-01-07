@@ -3,7 +3,6 @@ mod tests_dm {
     use std::f64::consts::{FRAC_1_SQRT_2, SQRT_2};
     use dm_simu_rs::density_matrix::{DensityMatrix, State};
     use dm_simu_rs::operators::{OneQubitOp, Operator, TwoQubitsOp};
-    use dm_simu_rs::tensor::Tensor;
     use num_complex::Complex;
     use num_traits::PrimInt;
 
@@ -14,7 +13,7 @@ mod tests_dm {
         let rho = DensityMatrix::new(1, State::ZERO);
         let expected_data = vec![Complex::ONE, Complex::ZERO, Complex::ZERO, Complex::ZERO];
 
-        assert_eq!(expected_data, rho.data.data);
+        assert_eq!(expected_data, rho.data);
         assert_eq!(rho.nqubits, 1);
         assert_eq!(rho.size, 2);
     }
@@ -29,7 +28,7 @@ mod tests_dm {
             Complex::new(0.5, 0.),
         ];
 
-        assert_eq!(expected_data, rho.data.data);
+        assert_eq!(expected_data, rho.data);
         assert_eq!(rho.nqubits, 1);
         assert_eq!(rho.size, 2);
     }
@@ -51,7 +50,7 @@ mod tests_dm {
                     Complex::new(-factor, 0.0)
                 };
 
-                let value = rho.get(i as u8, j as u8);
+                let value = rho.data[i * size + j];
                 assert_eq!(
                     expected_value, value,
                     "Mismatch at indices ({}, {}): expected {:?}, got {:?}",
@@ -75,7 +74,7 @@ mod tests_dm {
         let rho = DensityMatrix::new(1, State::ONE);
         let expected_data = vec![Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ONE];
 
-        assert_eq!(expected_data, rho.data.data);
+        assert_eq!(expected_data, rho.data);
         assert_eq!(rho.nqubits, 1);
         assert_eq!(rho.size, 2);
     }
@@ -89,7 +88,7 @@ mod tests_dm {
             Complex::new(0., 0.),
             Complex::new(0., 0.),
         ];
-        assert_eq!(rho.data.data, expected_data);
+        assert_eq!(rho.data, expected_data);
         assert_eq!(rho.nqubits, 1);
         assert_eq!(rho.size, 2);
     }
@@ -103,7 +102,7 @@ mod tests_dm {
             Complex::new(0., 0.),
             Complex::new(1., 0.),
         ];
-        assert_eq!(rho.data.data, expected_data);
+        assert_eq!(rho.data, expected_data);
         assert_eq!(rho.nqubits, 1);
         assert_eq!(rho.size, 2);
     }
@@ -134,7 +133,7 @@ mod tests_dm {
             Complex::new(0., 0.),
             Complex::new(0., 0.),
         ];
-        assert_eq!(rho.data.data, expected_data);
+        assert_eq!(rho.data, expected_data);
         assert_eq!(rho.nqubits, 2);
         assert_eq!(rho.size, 4);
     }
@@ -165,7 +164,7 @@ mod tests_dm {
             Complex::new(0., 0.),
             Complex::new(0., 0.),
         ];
-        assert_eq!(rho.data.data, expected_data);
+        assert_eq!(rho.data, expected_data);
         assert_eq!(rho.nqubits, 2);
         assert_eq!(rho.size, 4);
     }
@@ -196,7 +195,7 @@ mod tests_dm {
             Complex::new(0., 0.),
             Complex::new(0., 0.),
         ];
-        assert_eq!(rho.data.data, expected_data);
+        assert_eq!(rho.data, expected_data);
         assert_eq!(rho.nqubits, 2);
         assert_eq!(rho.size, 4);
     }
@@ -227,7 +226,7 @@ mod tests_dm {
             Complex::new(0., 0.),
             Complex::new(1., 0.),
         ];
-        assert_eq!(rho.data.data, expected_data);
+        assert_eq!(rho.data, expected_data);
         assert_eq!(rho.nqubits, 2);
         assert_eq!(rho.size, 4);
     }
@@ -242,28 +241,23 @@ mod tests_dm {
             Complex::new(0., 0.),
             Complex::new(0., 0.),
         ];
-        assert_eq!(rho.data.data, expected_data);
+        assert_eq!(rho.data, expected_data);
     }
     #[test]
     fn test_one_qubit_evolve_single_h() {
         let mut rho = DensityMatrix::new(1, State::ZERO);
         rho.evolve_single(&Operator::one_qubit(OneQubitOp::H), 0).unwrap();
-        let expected_data = Tensor::from_vec(
+        let expected_data = DensityMatrix::from_vec(
             &[
                 Complex::new(0.5, 0.),
                 Complex::new(0.5, 0.),
                 Complex::new(0.5, 0.),
                 Complex::new(0.5, 0.),
             ],
-            vec![2, 2],
-        );
+        ).unwrap();
         assert_eq!(
             rho.equals(
-                DensityMatrix {
-                    data: expected_data,
-                    size: 2,
-                    nqubits: 1
-                },
+                &expected_data,
                 TOLERANCE
             ),
             true
@@ -273,22 +267,17 @@ mod tests_dm {
     fn test_one_qubit_evolve_single_x() {
         let mut rho = DensityMatrix::new(1, State::ZERO);
         rho.evolve_single(&Operator::one_qubit(OneQubitOp::X), 0).unwrap();
-        let expected_data = Tensor::from_vec(
+        let expected_data = DensityMatrix::from_vec(
             &[
                 Complex::new(0., 0.),
                 Complex::new(0., 0.),
                 Complex::new(0., 0.),
                 Complex::new(1., 0.),
             ],
-            vec![2, 2],
-        );
+        ).unwrap();
         assert_eq!(
             rho.equals(
-                DensityMatrix {
-                    data: expected_data,
-                    size: 2,
-                    nqubits: 1
-                },
+                &expected_data,
                 TOLERANCE
             ),
             true
@@ -298,22 +287,17 @@ mod tests_dm {
     fn test_one_qubit_evolve_single_y() {
         let mut rho = DensityMatrix::new(1, State::ZERO);
         rho.evolve_single(&Operator::one_qubit(OneQubitOp::Y), 0).unwrap();
-        let expected_data = Tensor::from_vec(
+        let expected_data = DensityMatrix::from_vec(
             &[
                 Complex::new(0., 0.),
                 Complex::new(0., 0.),
                 Complex::new(0., 0.),
                 Complex::new(1., 0.),
             ],
-            vec![2, 2],
-        );
+        ).unwrap();
         assert_eq!(
             rho.equals(
-                DensityMatrix {
-                    data: expected_data,
-                    size: 2,
-                    nqubits: 1
-                },
+                &expected_data,
                 TOLERANCE
             ),
             true
@@ -323,22 +307,17 @@ mod tests_dm {
     fn test_one_qubit_evolve_single_z() {
         let mut rho = DensityMatrix::new(1, State::ZERO);
         rho.evolve_single(&Operator::one_qubit(OneQubitOp::Z), 0).unwrap();
-        let expected_data = Tensor::from_vec(
+        let expected_data = DensityMatrix::from_vec(
             &[
                 Complex::new(1., 0.),
                 Complex::new(0., 0.),
                 Complex::new(0., 0.),
                 Complex::new(0., 0.),
             ],
-            vec![2, 2],
-        );
+        ).unwrap();
         assert_eq!(
             rho.equals(
-                DensityMatrix {
-                    data: expected_data,
-                    size: 2,
-                    nqubits: 1
-                },
+                &expected_data,
                 TOLERANCE
             ),
             true
@@ -356,23 +335,17 @@ mod tests_dm {
         rho.evolve_single(&Operator::one_qubit(OneQubitOp::I), 0).unwrap();
         println!("{rho:}");
         
-        let expected_data = Tensor::from_vec(
+        let expected_data = DensityMatrix::from_vec(
             &[
                 Complex::new(0.5, 0.),
                 Complex::new(0.5, 0.),
                 Complex::new(0.5, 0.),
                 Complex::new(0.5, 0.),
             ],
-            vec![2, 2],
-        );
-    
-        assert!(
-            compare_matrices(
-                rho.data.data.as_slice(),
-                expected_data.data.as_slice(),
-                TOLERANCE
-            ),
-            "The density matrix does not match the expected result."
+        ).unwrap();
+
+        assert_eq!(
+            rho.equals(&expected_data, TOLERANCE), true
         );
     }
     
@@ -380,7 +353,7 @@ mod tests_dm {
     fn test_two_qubits_evolve_single_i() {
         let mut rho = DensityMatrix::new(2, State::ZERO);
         rho.evolve_single(&Operator::one_qubit(OneQubitOp::I), 0).unwrap();
-        let expected_data = Tensor::from_vec(
+        let expected_data = DensityMatrix::from_vec(
             &[
                 Complex::new(1., 0.),
                 Complex::new(0., 0.),
@@ -399,15 +372,10 @@ mod tests_dm {
                 Complex::new(0., 0.),
                 Complex::new(0., 0.),
             ],
-            vec![2, 2, 2, 2],
-        );
+        ).unwrap();
         assert_eq!(
             rho.equals(
-                DensityMatrix {
-                    data: expected_data,
-                    size: 2,
-                    nqubits: 1
-                },
+                &expected_data,
                 TOLERANCE
             ),
             true
@@ -417,7 +385,7 @@ mod tests_dm {
     fn test_two_qubits_evolve_single_h() {
         let mut rho = DensityMatrix::new(2, State::ZERO);
         rho.evolve_single(&Operator::one_qubit(OneQubitOp::H), 0).unwrap();
-        let expected_data = Tensor::from_vec(
+        let expected_data = DensityMatrix::from_vec(
             &[
                 Complex::new(0.5, 0.),
                 Complex::new(0., 0.),
@@ -436,15 +404,10 @@ mod tests_dm {
                 Complex::new(0., 0.),
                 Complex::new(0., 0.),
             ],
-            vec![2, 2, 2, 2],
-        );
+        ).unwrap();
         assert_eq!(
             rho.equals(
-                DensityMatrix {
-                    data: expected_data,
-                    size: 2,
-                    nqubits: 1
-                },
+                &expected_data,
                 TOLERANCE
             ),
             true
@@ -454,7 +417,7 @@ mod tests_dm {
     fn test_two_qubits_evolve_single_x() {
         let mut rho = DensityMatrix::new(2, State::ZERO);
         rho.evolve_single(&Operator::one_qubit(OneQubitOp::X), 0).unwrap();
-        let expected_data = Tensor::from_vec(
+        let expected_data = DensityMatrix::from_vec(
             &[
                 Complex::new(0., 0.),
                 Complex::new(0., 0.),
@@ -473,15 +436,10 @@ mod tests_dm {
                 Complex::new(0., 0.),
                 Complex::new(0., 0.),
             ],
-            vec![2, 2, 2, 2],
-        );
+        ).unwrap();
         assert_eq!(
             rho.equals(
-                DensityMatrix {
-                    data: expected_data,
-                    size: 2,
-                    nqubits: 1
-                },
+                &expected_data,
                 TOLERANCE
             ),
             true
@@ -491,7 +449,7 @@ mod tests_dm {
     fn test_two_qubits_evolve_single_y() {
         let mut rho = DensityMatrix::new(2, State::ZERO);
         rho.evolve_single(&Operator::one_qubit(OneQubitOp::Y), 0);
-        let expected_data = Tensor::from_vec(
+        let expected_data = DensityMatrix::from_vec(
             &[
                 Complex::new(0., 0.),
                 Complex::new(0., 0.),
@@ -510,15 +468,10 @@ mod tests_dm {
                 Complex::new(0., 0.),
                 Complex::new(0., 0.),
             ],
-            vec![2, 2, 2, 2],
-        );
+        ).unwrap();
         assert_eq!(
             rho.equals(
-                DensityMatrix {
-                    data: expected_data,
-                    size: 2,
-                    nqubits: 1
-                },
+                &expected_data,
                 TOLERANCE
             ),
             true
@@ -528,7 +481,7 @@ mod tests_dm {
     fn test_two_qubits_evolve_single_z() {
         let mut rho = DensityMatrix::new(2, State::ZERO);
         rho.evolve_single(&Operator::one_qubit(OneQubitOp::Z), 0);
-        let expected_data = Tensor::from_vec(
+        let expected_data = DensityMatrix::from_vec(
             &[
                 Complex::new(1., 0.),
                 Complex::new(0., 0.),
@@ -547,15 +500,10 @@ mod tests_dm {
                 Complex::new(0., 0.),
                 Complex::new(0., 0.),
             ],
-            vec![2, 2, 2, 2],
-        );
+        ).unwrap();
         assert_eq!(
             rho.equals(
-                DensityMatrix {
-                    data: expected_data,
-                    size: 2,
-                    nqubits: 1
-                },
+                &expected_data,
                 TOLERANCE
             ),
             true
@@ -583,7 +531,7 @@ mod tests_dm {
             Complex::new(0., 0.),
             Complex::new(0., 0.),
         ];
-        assert_eq!(expected_data, rho.data.data);
+        assert_eq!(expected_data, rho.data);
     }
     #[test]
     fn test_evolve_cx_ket00_2() {
@@ -607,7 +555,7 @@ mod tests_dm {
             Complex::new(0., 0.),
             Complex::new(0., 0.),
         ];
-        assert_eq!(expected_data, rho.data.data);
+        assert_eq!(expected_data, rho.data);
     }
     #[test]
     fn test_evolve_cx_ket01() {
@@ -637,7 +585,7 @@ mod tests_dm {
             Complex::new(0., 0.),
             Complex::new(1., 0.),
         ];
-        assert_eq!(expected_data, rho.data.data);
+        assert_eq!(expected_data, rho.data);
     }
     #[test]
     fn test_evolve_cx_ket10() {
@@ -667,7 +615,7 @@ mod tests_dm {
             Complex::new(0., 0.),
             Complex::new(1., 0.),
         ];
-        assert_eq!(expected_data, rho.data.data);
+        assert_eq!(expected_data, rho.data);
     }
     #[test]
     fn test_evolve_cx_ket11() {
@@ -697,7 +645,8 @@ mod tests_dm {
             Complex::new(0., 0.),
             Complex::new(0., 0.),
         ];
-        assert_eq!(expected_data, rho.data.data);
+        let expected_rho = DensityMatrix::from_vec(&expected_data).unwrap();
+        assert!(rho.equals(&expected_rho, TOLERANCE), "Actual:\n{rho}\nExpected:\n{expected_rho}");
     }
     #[test]
     fn test_evolve_cz_ket00() {
@@ -721,7 +670,7 @@ mod tests_dm {
             Complex::new(0., 0.),
             Complex::new(0., 0.),
         ];
-        assert_eq!(expected_data, rho.data.data);
+        assert_eq!(expected_data, rho.data);
     }
 
     #[test]
@@ -746,7 +695,7 @@ mod tests_dm {
             Complex::new(0., 0.),
             Complex::new(0., 0.),
         ];
-        assert_eq!(expected_data, rho.data.data);
+        assert_eq!(expected_data, rho.data);
     }
 
     #[test]
@@ -830,7 +779,7 @@ mod tests_dm {
             Complex::ZERO,
             Complex::ZERO,
         ];
-        assert_eq!(expected_data, rho.data.data);
+        assert_eq!(expected_data, rho.data);
     }
     #[test]
     fn test_evolve_swap_ket001_2() {
@@ -913,7 +862,7 @@ mod tests_dm {
             Complex::ZERO,
             Complex::ZERO,
         ];
-        assert_eq!(expected_data, rho.data.data);
+        assert_eq!(expected_data, rho.data);
     }
     #[test]
     fn test_evolve_swap_ket100_1() {
@@ -996,7 +945,7 @@ mod tests_dm {
             Complex::ZERO,
             Complex::ZERO,
         ];
-        assert_eq!(expected_data, rho.data.data);
+        assert_eq!(expected_data, rho.data);
     }
     #[test]
     fn test_evolve_swap_ket100_2() {
@@ -1079,7 +1028,7 @@ mod tests_dm {
             Complex::ZERO,
             Complex::ZERO,
         ];
-        assert_eq!(expected_data, rho.data.data);
+        assert_eq!(expected_data, rho.data);
     }
     #[test]
     fn test_evolve_swap_ket111_1() {
@@ -1162,7 +1111,7 @@ mod tests_dm {
             Complex::ZERO,
             Complex::ONE,
         ];
-        assert_eq!(expected_data, rho.data.data);
+        assert_eq!(expected_data, rho.data);
     }
     #[test]
     fn test_evolve_swap_ket111_2() {
@@ -1245,7 +1194,7 @@ mod tests_dm {
             Complex::ZERO,
             Complex::ONE,
         ];
-        assert_eq!(expected_data, rho.data.data);
+        assert_eq!(expected_data, rho.data);
     }
     #[test]
     fn test_evolve_swap_ket111_3() {
@@ -1328,7 +1277,7 @@ mod tests_dm {
             Complex::ZERO,
             Complex::ONE,
         ];
-        assert_eq!(expected_data, rho.data.data);
+        assert_eq!(expected_data, rho.data);
     }
     #[test]
     #[should_panic]
@@ -1387,7 +1336,7 @@ mod tests_dm {
             Complex::ZERO,
         ];
 
-        assert_eq!(expected_data, rho.data.data);
+        assert_eq!(expected_data, rho.data);
     }
 
     #[test]
@@ -1399,7 +1348,7 @@ mod tests_dm {
         let mut expected_data: Vec<Complex<f64>> = vec![Complex::ZERO; 16 * 16];
         expected_data[0] = Complex::ONE;
 
-        assert_eq!(expected_data, rho.data.data);
+        assert_eq!(expected_data, rho.data);
     }
 
     #[test]
@@ -1410,7 +1359,7 @@ mod tests_dm {
 
         let expected_data: Vec<Complex<f64>> = vec![Complex::new(0.25, 0.); 16];
 
-        assert_eq!(expected_data, rho.data.data);
+        assert_eq!(expected_data, rho.data);
     }
 
     #[test]
@@ -1422,7 +1371,7 @@ mod tests_dm {
         let mut expected_data: Vec<Complex<f64>> = vec![Complex::ZERO; 16];
         expected_data[5] = Complex::ONE;
 
-        assert_eq!(expected_data, rho.data.data);
+        assert_eq!(expected_data, rho.data);
     }
 
     #[test]
@@ -1433,14 +1382,13 @@ mod tests_dm {
 
         let expected_data: Vec<Complex<f64>> = vec![Complex::new(0.0625, 0.); 16 * 16];
 
-        assert_eq!(expected_data, rho.data.data);
+        assert_eq!(expected_data, rho.data);
     }
 
     #[test]
     fn test_kron_specific() {
         let dm_vec = vec![Complex::new(0.06159174, 0.), Complex::new(0., 0.24041256), Complex::new(0., -0.24041256), Complex::new(0.93840826, 0.)];
-        let dm_tensor = Tensor::from_vec(&dm_vec, vec![2, 2]);
-        let mut rho_1 = DensityMatrix::from_tensor(dm_tensor).unwrap();
+        let mut rho_1 = DensityMatrix::from_vec(&dm_vec).unwrap();
         let rho_2 = DensityMatrix::new(1, State::PLUS);
 
         rho_1.tensor(&rho_2);
@@ -1453,10 +1401,10 @@ mod tests_dm {
         ];
 
 
-        let expected_dm = DensityMatrix::from_tensor(Tensor { data: expected_data, shape: vec![2, 2, 2, 2] }).unwrap();
+        let expected_dm = DensityMatrix::from_vec(&expected_data).unwrap();
 
         let tol = 1e-10;
-        assert!(rho_1.equals(expected_dm, tol));
+        assert!(rho_1.equals(&expected_dm, tol));
     }
 
     #[test]
@@ -1595,19 +1543,18 @@ mod tests_dm {
         let mut dm = DensityMatrix::from_statevec(sv).unwrap();
         dm.ptrace(&[0]).unwrap();
         
-        let expected_tensor = Tensor::from_vec(
-            &[Complex::new(0.5, 0.), Complex::new(0.5, 0.), Complex::new(0.5, 0.), Complex::new(0.5, 0.)], 
-            vec![2, 2]
-        );
+        let expected_dm = DensityMatrix::from_vec(
+            &[Complex::new(0.5, 0.), Complex::new(0.5, 0.), Complex::new(0.5, 0.), Complex::new(0.5, 0.)]
+        ).unwrap();
 
         let tol = 1e-15;
 
-        if !dm.data.equals(&expected_tensor, 1e-15) {
-            println!("First dm: {:?}\n================", dm.data);
-            println!("Second dm: \n{:?}\n================", expected_tensor);
+        if !dm.equals(&expected_dm, 1e-15) {
+            println!("First dm: {:}\n================", dm);
+            println!("Second dm: \n{:}\n================", expected_dm);
         }
 
-        assert!(dm.data.equals(&expected_tensor, tol));
+        assert!(dm.equals(&expected_dm, tol));
     }
 
     #[test]
@@ -1616,19 +1563,18 @@ mod tests_dm {
         let sv: &[Complex<f64>; 4] = &[Complex::new(FRAC_1_SQRT_2, 0.), Complex::new(FRAC_1_SQRT_2, 0.), Complex::ZERO, Complex::ZERO];
         let mut dm = DensityMatrix::from_statevec(sv).unwrap();
         dm.ptrace(&[1]).unwrap();
-        let expected_tensor: Tensor<Complex<f64>> = Tensor::from_vec(
-            &[Complex::ONE, Complex::ZERO, Complex::ZERO, Complex::ZERO],
-            vec![2, 2]
-        );
+        let expected_dm = DensityMatrix::from_vec(
+            &[Complex::ONE, Complex::ZERO, Complex::ZERO, Complex::ZERO]
+        ).unwrap();
 
         let tol = 1e-15;
 
-        if !dm.data.equals(&expected_tensor, 1e-15) {
-            println!("First dm: {:?}\n================", dm.data);
-            println!("Second dm: \n{:?}\n================", expected_tensor);
+        if !dm.equals(&expected_dm, 1e-15) {
+            println!("First dm: {:}\n================", dm);
+            println!("Second dm: \n{:}\n================", expected_dm);
         }
 
-        assert!(dm.data.equals(&expected_tensor, tol));
+        assert!(dm.equals(&expected_dm, tol));
     }
 
     #[test]
@@ -1637,57 +1583,55 @@ mod tests_dm {
         let sv: &[Complex<f64>; 4] = &[Complex::new(FRAC_1_SQRT_2, 0.), Complex::new(FRAC_1_SQRT_2, 0.), Complex::ZERO, Complex::ZERO];
         let mut dm = DensityMatrix::from_statevec(sv).unwrap();
         dm.ptrace(&[0, 1]).unwrap();
-        let expected_tensor: Tensor<Complex<f64>> = Tensor::from_vec(
-            &[Complex::ONE],
-            vec![1]
-        );
+        let expected_dm = DensityMatrix::from_vec(
+            &[Complex::ONE]
+        ).unwrap();
 
         let tol = 1e-15;
 
-        if !dm.data.equals(&expected_tensor, 1e-15) {
-            println!("First dm: {:?}\n================", dm.data);
-            println!("Second dm: \n{:?}\n================", expected_tensor);
+        if !dm.equals(&expected_dm, 1e-15) {
+            println!("First dm: {:}\n================", dm);
+            println!("Second dm: \n{:}\n================", expected_dm);
         }
 
-        assert!(dm.data.equals(&expected_tensor, tol));
+        assert!(dm.equals(&expected_dm, tol));
     }
 
     #[test]
     fn test_ptrace_4() {
         let mut dm = DensityMatrix::new(4, State::PLUS);
         dm.ptrace(&[0, 1, 2]).unwrap();
-        let expected_tensor: Tensor<Complex<f64>> = Tensor::from_vec(
+        let expected_dm = DensityMatrix::from_vec(
             &[Complex::new(0.5, 0.), Complex::new(0.5, 0.), Complex::new(0.5, 0.), Complex::new(0.5, 0.)],
-            vec![2, 2]
-        );
+        ).unwrap();
 
         let tol = 1e-15;
 
-        if !dm.data.equals(&expected_tensor, 1e-15) {
-            println!("First dm: {:?}\n================", dm.data);
-            println!("Second dm: \n{:?}\n================", expected_tensor);
+        if !dm.equals(&expected_dm, 1e-15) {
+            println!("First dm: {:}\n================", dm);
+            println!("Second dm: \n{:}\n================", expected_dm);
+            
         }
 
-        assert!(dm.data.equals(&expected_tensor, tol));
+        assert!(dm.equals(&expected_dm, tol));
     }
 
     #[test]
     fn test_ptrace_5() {
         let mut dm = DensityMatrix::new(4, State::PLUS);
         dm.ptrace(&[0, 1, 2, 3]).unwrap();
-        let expected_tensor: Tensor<Complex<f64>> = Tensor::from_vec(
+        let expected_dm = DensityMatrix::from_vec(
             &[Complex::ONE],
-            vec![1]
-        );
+        ).unwrap();
 
         let tol = 1e-15;
 
-        if !dm.data.equals(&expected_tensor, 1e-15) {
-            println!("First dm: {:?}\n================", dm.data);
-            println!("Second dm: \n{:?}\n================", expected_tensor);
+        if !dm.equals(&expected_dm, 1e-15) {
+            println!("First dm: {:}\n================", dm);
+            println!("Second dm: \n{:}\n================", expected_dm);
         }
 
-        assert!(dm.data.equals(&expected_tensor, tol));
+        assert!(dm.equals(&expected_dm, tol));
     }
 
     #[test]
@@ -1695,23 +1639,22 @@ mod tests_dm {
         let sv = &[Complex::ZERO, Complex::new(1. / 3_f64.sqrt(), 0.), Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::new(2_f64.sqrt() / 3_f64.sqrt(), 0.), Complex::ZERO, Complex::ZERO];
         let mut dm = DensityMatrix::from_statevec(sv).unwrap();
         dm.ptrace(&[2]).unwrap();
-        let expected_tensor: Tensor<Complex<f64>> = Tensor::from_vec(
+        let expected_dm = DensityMatrix::from_vec(
             &[
                 (1. / 3.).into(), Complex::ZERO, (SQRT_2 / 3.).into(), Complex::ZERO,
                 Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO,
                 (SQRT_2 / 3.).into(), Complex::ZERO, (2. / 3.).into(), Complex::ZERO,
                 Complex::ZERO, Complex::ZERO, Complex::ZERO, Complex::ZERO
             ],
-            vec![2, 2, 2, 2]
-        );
+        ).unwrap();
 
         let tol = 1e-15;
 
-        if !dm.data.equals(&expected_tensor, 1e-15) {
-            println!("First dm: {:?}\n================", dm.data);
-            println!("Second dm: \n{:?}\n================", expected_tensor);
+        if !dm.equals(&expected_dm, 1e-15) {
+            println!("First dm: {:}\n================", dm);
+            println!("Second dm: \n{:}\n================", expected_dm);
         }
 
-        assert!(dm.data.equals(&expected_tensor, tol));
+        assert!(dm.equals(&expected_dm, tol));
     }
 }

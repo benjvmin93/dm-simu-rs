@@ -1,5 +1,3 @@
-use crate::tensor::Tensor;
-use crate::tools::bitwise_int_to_bin_vec;
 use num_complex::Complex;
 use num_traits::pow;
 use std::f64;
@@ -22,7 +20,7 @@ pub enum TwoQubitsOp {
 #[derive(Clone)]
 pub struct Operator {
     pub nqubits: usize,
-    pub data: Tensor<Complex<f64>>,
+    pub data: Vec<Complex<f64>>,
 }
 
 impl fmt::Display for Operator {
@@ -32,8 +30,7 @@ impl fmt::Display for Operator {
         for i in 0..dim {
             write!(f, "[")?;
             for j in 0..dim {
-                let indices = bitwise_int_to_bin_vec(i * dim + j, 2 * self.nqubits);
-                write!(f, "{}", self.data.get(&indices))?;
+                write!(f, "{}", self.data[i * dim + j])?;
                 if j != dim - 1 {
                     write!(f, ", ")?;
                 }
@@ -61,11 +58,10 @@ impl Operator {
         if n % 2 != 0 {
             return Err("Operator is not of the size 2^2n".to_string());
         }
-        let shape = vec![2; n];
 
         Ok(Operator {
             nqubits: n / 2,
-            data: Tensor::from_vec(data, shape),
+            data: data.to_vec(),
         })
     }
 
@@ -101,7 +97,7 @@ impl Operator {
         }
         Self {
             nqubits,
-            data: Tensor::from_vec(&data, vec![2, 2]),
+            data
         }
     }
 
@@ -128,20 +124,19 @@ impl Operator {
         }
         Self {
             nqubits,
-            data: Tensor::from_vec(&data, vec![2, 2, 2, 2]),
+            data,
         }
     }
 
     pub fn conj(&self) -> Operator {
         let new_data = self
             .data
-            .data
             .iter()
             .map(|e| e.conj())
             .collect::<Vec<Complex<f64>>>();
         Operator {
             nqubits: self.nqubits,
-            data: Tensor::from_vec(&new_data, self.data.shape.clone()),
+            data: new_data,
         }
     }
 
@@ -150,13 +145,12 @@ impl Operator {
         let mut result = vec![Complex::ZERO; size * size];
         for i in 0..size {
             for j in 0..size {
-                let indices = bitwise_int_to_bin_vec(i * size + j, 2 * self.nqubits);
-                result[j * size + i] = *self.data.get(&indices);
+                result[j * size + i] = self.data[i * size + j];
             }
         }
         Operator {
             nqubits: self.nqubits,
-            data: Tensor::from_vec(&result, self.data.shape.clone()),
+            data: result,
         }
     }
 
@@ -165,13 +159,12 @@ impl Operator {
         let mut new_data = vec![Complex::ZERO; size * size];
         for i in 0..size {
             for j in 0..size {
-                let indices = bitwise_int_to_bin_vec(i * size + j, 2 * self.nqubits);
-                new_data[j * size + i] = self.data.get(&indices).conj();
+                new_data[j * size + i] = self.data[i * size + j].conj();
             }
         }
         Operator {
             nqubits: self.nqubits,
-            data: Tensor::from_vec(&new_data, self.data.shape.clone()),
+            data: new_data,
         }
     }
 }
