@@ -41,25 +41,25 @@ mod tests_operators {
     fn test_operator_cx() {
         let cx_gate = Operator::two_qubits(TwoQubitsOp::CX);
         assert_eq!(cx_gate.data[0], Complex::new(1., 0.));
-        assert_eq!(cx_gate.data[1], Complex::new(1., 0.));
-        assert_eq!(cx_gate.data[2], Complex::new(1., 0.));
-        assert_eq!(cx_gate.data[3], Complex::new(1., 0.));
+        assert_eq!(cx_gate.data[5], Complex::new(1., 0.));
+        assert_eq!(cx_gate.data[11], Complex::new(1., 0.));
+        assert_eq!(cx_gate.data[14], Complex::new(1., 0.));
     }
     #[test]
     fn test_operator_cz() {
         let cz_gate = Operator::two_qubits(TwoQubitsOp::CZ);
         assert_eq!(cz_gate.data[0], Complex::new(1., 0.));
-        assert_eq!(cz_gate.data[1], Complex::new(1., 0.));
-        assert_eq!(cz_gate.data[2], Complex::new(1., 0.));
-        assert_eq!(cz_gate.data[3], Complex::new(-1., 0.));
+        assert_eq!(cz_gate.data[5], Complex::new(1., 0.));
+        assert_eq!(cz_gate.data[10], Complex::new(1., 0.));
+        assert_eq!(cz_gate.data[15], Complex::new(-1., 0.));
     }
     #[test]
     fn test_operator_swap() {
         let swap_gate = Operator::two_qubits(TwoQubitsOp::SWAP);
         assert_eq!(swap_gate.data[0], Complex::new(1., 0.));
-        assert_eq!(swap_gate.data[1], Complex::new(1., 0.));
-        assert_eq!(swap_gate.data[2], Complex::new(1., 0.));
-        assert_eq!(swap_gate.data[3], Complex::new(1., 0.));
+        assert_eq!(swap_gate.data[6], Complex::new(1., 0.));
+        assert_eq!(swap_gate.data[9], Complex::new(1., 0.));
+        assert_eq!(swap_gate.data[15], Complex::new(1., 0.));
     }
     #[test]
     fn test_transconjugate_x() {
