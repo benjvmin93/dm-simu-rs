@@ -311,7 +311,10 @@ impl DensityMatrix {
                 // Extract bits at target positions and compose bitmask
                 let mut b_i = 0;
                 let mut b_j = 0;
-                let bitmask: usize = target_bitshifts.iter().enumerate().map(|(index, t)| {
+                /* `target_bitshifts` is ordered from the most to the least significant bits
+                   to extract to `b_i` and `b_j`, therefore the iteration is reversed for
+                   `index` to match the weight of the extracted bits. */
+                let bitmask: usize = target_bitshifts.iter().rev().enumerate().map(|(index, t)| {
                     b_i |= ((i >> t) & 1) << index;
                     b_j |= ((j >> t) & 1) << index;
                     1 << t
