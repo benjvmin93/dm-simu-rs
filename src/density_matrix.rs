@@ -89,7 +89,6 @@ impl DensityMatrix {
                         dm.data[i * size + j] = value;
                     }
                 }
-                println!("dm = {}", dm);
                 dm
             }
         }
@@ -128,7 +127,7 @@ impl DensityMatrix {
 
         Ok(DensityMatrix {
             data: vec.to_vec(),
-            size: dim,
+            size: 1 << dim / 2,
             nqubits: dim / 2
         })        
     }
@@ -290,23 +289,14 @@ impl DensityMatrix {
         // Calculate dimensions
         let op_dim = 1 << op.nqubits;
         let dim = 1 << self.nqubits;
-        println!("Operator dimension: {}, Density matrix dimension: {}", op_dim, dim);
     
         // Calculate target bitshifts
         let target_bitshifts: Vec<usize> = indices.iter().map(|i| self.nqubits - i - 1).collect();
-        println!("Target bitshifts: {:?}", target_bitshifts);
-    
         // Prepare a new density matrix
         let mut new_dm: Vec<Complex<f64>> = (0..dim * dim)
             .map(|idx| {
                 let i = idx / dim;
                 let j = idx % dim;
-    
-                // Debug: Current indices in binary representation
-                println!(
-                    "Processing density matrix element: (i: {}, j: {}) -> (i: {:b}, j: {:b})",
-                    i, j, i, j
-                );
     
                 // Extract bits at target positions and compose bitmask
                 let mut b_i = 0;
@@ -319,20 +309,10 @@ impl DensityMatrix {
                     b_j |= ((j >> t) & 1) << index;
                     1 << t
                 }).sum();
-    
-                println!(
-                    "b_i: {:b}, b_j: {:b}, bitmask: {:b} for element (i: {:b}, j: {:b})",
-                    b_i, b_j, bitmask, i, j
-                );
-    
+        
                 // Get bits with targets set to 0
                 let i_base = i & !bitmask;
                 let j_base = j & !bitmask;
-    
-                println!(
-                    "i_base: {:b}, j_base: {:b} (i_base: {}, j_base: {})",
-                    i_base, j_base, i_base, j_base
-                );
     
                 let mut sum = Complex::ZERO;
     
@@ -354,35 +334,20 @@ impl DensityMatrix {
                     let i_prime = i_base | p_prime;
                     let j_prime = j_base | q_prime;
     
-                    println!(
-                        "op_idx: {}, p: {:b}, q: {:b}, p_prime: {:b}, q_prime: {:b}, i_prime: {:b}, j_prime: {:b}",
-                        op_idx, p, q, p_prime, q_prime, i_prime, j_prime
-                    );
-    
                     let data_idx = i_prime * dim + j_prime;
     
                     if self.data[data_idx] != Complex::ZERO {
                         let contrib = op.data[b_i * op_dim + p]
                             * self.data[data_idx]
                             * op.data[b_j * op_dim + q].conj();
-                        println!(
-                            "Contribution to sum: {} (from data_idx: {}, op indices: {}, {})",
-                            contrib, data_idx, b_i * op_dim + p, b_j * op_dim + q
-                        );
                         sum += contrib;
                     }
                 });
     
-                println!(
-                    "New density matrix element (i: {:b}, j: {:b}): {}",
-                    i, j, sum
-                );
                 sum
             }).collect();
     
-        println!("Swapping old density matrix with the new one.");
         std::mem::swap(&mut self.data, &mut new_dm);
-        println!("Density matrix evolution completed successfully.");
         Ok(())
     }
     
