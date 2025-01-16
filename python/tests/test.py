@@ -286,7 +286,8 @@ def test_from_vec(array):
     array /= norm
     np.testing.assert_allclose(array.flatten(), dm_array)
 
-@hyp.given(sv_st(max=4), sv_st(max=5))
+@hyp.given(sv_st(max=6), sv_st(max=6))
+@hyp.settings(deadline=None)
 def test_tensor_dm(array1, array2):
     dm_1 = dm_simu_rs.new_dm_from_vec(array1)
     dm_2 = dm_simu_rs.new_dm_from_vec(array2)
@@ -335,7 +336,7 @@ def test_expectation_single(sv, op):
     
 
 @hyp.given(
-        sv_st(max=5),
+        sv_st(max=10),
         hyp.strategies.sampled_from(op_single)
     )
 def test_evolve_single(sv: np.ndarray, op: np.ndarray):
@@ -364,7 +365,7 @@ def test_evolve_single(sv: np.ndarray, op: np.ndarray):
 
 
 @hyp.given(
-        sv_st(min=2, max=7),
+        sv_st(min=2, max=10),
         hyp.strategies.sampled_from(op_double),   
     )
 @hyp.settings(deadline=None)
@@ -396,7 +397,7 @@ def test_evolve(sv: np.ndarray, op: np.ndarray):
     np.testing.assert_allclose(dm_simu_rs.get_dm(dm), dm_ref.flatten(), atol=1e-5)
 
 @hyp.given(
-    sv_st(min=2, max=10),
+    sv_st(min=2, max=12),
 )
 @hyp.settings(deadline=None)
 def test_ptrace(sv):
@@ -417,4 +418,34 @@ def test_ptrace(sv):
     
     np.testing.assert_almost_equal(dm_after_rs, dm_after_ref.flatten(), decimal=5)
     np.testing.assert_equal(nqubits_after_rs, nqubits_after_ref)
-    
+
+@hyp.given(
+    sv_st(min=2, max=12)
+)
+def test_entangle(sv):
+    nqubits = sv_get_nqubits(sv)
+
+    rust_dm = dm_simu_rs.new_dm_from_vec(sv)
+    ref_dm = np.outer(sv, sv.conj())
+
+    qargs = tuple(np.random.choice(range(nqubits), size=2, replace=False))
+
+    print("Qubits:", qargs)
+    print("Initial Rust DM:\n", dm_simu_rs.get_dm(rust_dm))
+    print("Initial Ref DM:\n", ref_dm)
+
+    dm_after_rs = dm_simu_rs.entangle(rust_dm, qargs)
+    print("Rust DM After CZ:\n", dm_after_rs)
+
+    CZ = op_double[1]
+    print("CZ Operator:\n", CZ)
+
+    dm_after_ref = evolve(ref_dm, nqubits, CZ, qargs)
+    print("Reference DM After CZ:\n", dm_after_ref)
+
+    try:
+        np.testing.assert_almost_equal(dm_after_rs, dm_after_ref.flatten(), decimal=5)
+    except AssertionError as e:
+        print("Assertion Error:", e)
+        raise
+

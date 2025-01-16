@@ -455,9 +455,45 @@ impl DensityMatrix {
         Ok(())
     }  
 
-    pub fn entangle(&mut self, edge: &(usize, usize)) {
-        self.evolve(&Operator::two_qubits(TwoQubitsOp::CZ), &[edge.0, edge.1]);
+    pub fn cz(&mut self, edge: &(usize, usize)) -> Result<Vec<Complex<f64>>, String> {
+        /* Otimized version of control Z gate */
+        let (control, target) = *edge;
+        
+        // Check that the control and target qubits are within bounds
+        if control >= self.nqubits || target >= self.nqubits {
+            return Err(format!(
+                "Qubit indices out of range: control={}, target={}, nqubits={}",
+                control, target, self.nqubits
+            ));
+        }
+    
+        // Ensure the control and target qubits are distinct
+        if control == target {
+            return Err("Control and target qubits must be distinct.".to_string());
+        }
+    
+        // Calculate the bitmask for the control and target qubits
+        let control_mask = 1 << (self.nqubits - control - 1);
+        let target_mask = 1 << (self.nqubits - target - 1);
+    
+        let dim = 1 << self.nqubits;
+    
+        // Iterate through the density matrix
+        let new_dm = (0..dim * dim)
+            .map(|idx| {
+                let i = idx / dim;
+                let j = idx % dim;
+                if (i & control_mask == 1) && (i & target_mask == 1) 
+                    && (j & control_mask == 1) && (j & target_mask == 1) {
+                    -self.data[idx]
+                } else {
+                    self.data[idx]
+                }
+            }).collect();
+    
+        Ok(new_dm)
     }
+    
 
     pub fn swap(&mut self, edge: &(usize, usize)) {
         self.evolve(&Operator::two_qubits(TwoQubitsOp::SWAP), &[edge.0, edge.1]);

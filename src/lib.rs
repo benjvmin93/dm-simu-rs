@@ -137,9 +137,14 @@ fn dm_simu_rs<'py>(
     m.add_function(pyo3::wrap_pyfunction!(evolve, m)?)?;
 
     #[pyo3::pyfunction]
-    fn entangle<'py>(py_vec: PyVec<'py>, qubits: (usize, usize)) -> pyo3::prelude::PyResult<()> {
+    fn entangle<'py>(
+        py: pyo3::prelude::Python<'py>,
+        py_vec: PyVec<'py>,
+        qubits: (usize, usize)
+    ) -> pyo3::prelude::Bound<'py, numpy::array::PyArray1<Complex<f64>>> {
         let dm = get_dm_mut_ref(py_vec);
-        Ok(dm.entangle(&qubits))
+        let result = dm.cz(&qubits).unwrap();
+        numpy::IntoPyArray::into_pyarray_bound(result, py)
     }
     m.add_function(pyo3::wrap_pyfunction!(entangle, m)?)?;
 
