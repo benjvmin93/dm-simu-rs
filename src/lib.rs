@@ -141,7 +141,7 @@ fn dm_simu_rs<'py>(
     fn entangle<'py>(
         py: pyo3::prelude::Python<'py>,
         py_vec: PyVec<'py>,
-        qubits: (usize, usize)
+        qubits: (usize, usize),
     ) -> pyo3::prelude::Bound<'py, numpy::array::PyArray1<Complex<f64>>> {
         let dm = get_dm_mut_ref(py_vec);
         let result = dm.cz(&qubits).unwrap();
@@ -150,7 +150,11 @@ fn dm_simu_rs<'py>(
     m.add_function(pyo3::wrap_pyfunction!(entangle, m)?)?;
 
     #[pyo3::pyfunction]
-    fn swap<'py>(py: pyo3::prelude::Python<'py>, py_vec: PyVec<'py>, qubits: (usize, usize)) -> pyo3::prelude::Bound<'py, numpy::array::PyArray1<Complex<f64>>> {
+    fn swap<'py>(
+        py: pyo3::prelude::Python<'py>,
+        py_vec: PyVec<'py>,
+        qubits: (usize, usize),
+    ) -> pyo3::prelude::Bound<'py, numpy::array::PyArray1<Complex<f64>>> {
         let dm = get_dm_mut_ref(py_vec);
         let result = dm.swap(&qubits).unwrap();
         numpy::IntoPyArray::into_pyarray_bound(result, py)
@@ -181,10 +185,7 @@ fn dm_simu_rs<'py>(
     m.add_function(pyo3::wrap_pyfunction!(expectation_single, m)?)?;
 
     #[pyo3::pyfunction]
-    fn ptrace<'py>(
-        dm: PyVec<'py>,
-        qargs: Vec<usize>
-    ) -> pyo3::prelude::PyResult<()> {
+    fn ptrace<'py>(dm: PyVec<'py>, qargs: Vec<usize>) -> pyo3::prelude::PyResult<()> {
         let dm = get_dm_mut_ref(dm);
         Ok(dm.ptrace(&qargs.as_slice()).unwrap())
     }

@@ -95,10 +95,7 @@ impl Operator {
                 data = vec![Complex::ONE, Complex::ZERO, Complex::ZERO, Complex::ONE];
             }
         }
-        Self {
-            nqubits,
-            data
-        }
+        Self { nqubits, data }
     }
 
     pub fn two_qubits(gate: TwoQubitsOp) -> Self {
@@ -122,10 +119,7 @@ impl Operator {
                 data[3 * 4 + 3] = Complex::ONE;
             }
         }
-        Self {
-            nqubits,
-            data,
-        }
+        Self { nqubits, data }
     }
 
     pub fn conj(&self) -> Operator {

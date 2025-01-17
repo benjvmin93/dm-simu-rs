@@ -66,7 +66,7 @@ impl DensityMatrix {
                     nqubits,
                 };
                 // Generate the binary vector for |1>
-                dm.data[size * size - 1] =  Complex::ONE;
+                dm.data[size * size - 1] = Complex::ONE;
                 dm
             }
             State::MINUS => {
@@ -128,8 +128,8 @@ impl DensityMatrix {
         Ok(DensityMatrix {
             data: vec.to_vec(),
             size: 1 << dim / 2,
-            nqubits: dim / 2
-        })        
+            nqubits: dim / 2,
+        })
     }
 
     pub fn print(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -158,39 +158,36 @@ impl DensityMatrix {
 
     // Set element at row i and column j
     pub fn set(&mut self, i: usize, j: usize, value: Complex<f64>) {
-        self.data[i * self.size + j] =  value;
+        self.data[i * self.size + j] = value;
     }
 
-    pub fn expectation_single(
-        &self,
-        op: &Operator,
-        index: usize,
-    ) -> Result<Complex<f64>, &str> {
+    pub fn expectation_single(&self, op: &Operator, index: usize) -> Result<Complex<f64>, &str> {
         if index >= self.nqubits {
             return Err("Index out of range");
         }
-    
+
         let index_mask = 1 << (self.nqubits - index - 1);
-    
+
         // Parallel computation of expectation
-        let expectation = self.data
+        let expectation = self
+            .data
             .par_iter()
             .enumerate()
             .map(|(idx, &rho_elt)| {
                 let i = idx / self.size;
                 let j = idx % self.size;
-    
+
                 if (i & !index_mask) == (j & !index_mask) {
                     let op_i = (i & index_mask) >> (self.nqubits - index - 1);
                     let op_j = (j & index_mask) >> (self.nqubits - index - 1);
-    
+
                     rho_elt * op.data[op_i * 2 + op_j]
                 } else {
                     Complex::ZERO
                 }
             })
             .reduce(|| Complex::ZERO, |a, b| a + b); // Combine partial results
-    
+
         Ok(expectation)
     }
 
@@ -203,11 +200,7 @@ impl DensityMatrix {
 
     pub fn normalize(&mut self) {
         let trace = self.trace();
-        self.data = self
-            .data
-            .par_iter()
-            .map(|&c| c / trace)
-            .collect::<Vec<_>>();
+        self.data = self.data.par_iter().map(|&c| c / trace).collect::<Vec<_>>();
     }
 
     pub fn evolve_single(&mut self, op: &Operator, index: usize) -> Result<(), String> {
@@ -228,15 +221,15 @@ impl DensityMatrix {
             .map(|idx| {
                 let i = idx / dim;
                 let j = idx % dim;
-                
+
                 // Extract bit at position index
                 let b_i = (i >> position_bitshift) & 1;
                 let b_j = (j >> position_bitshift) & 1;
-                
+
                 // Get state without the target qubit contribution
                 let bitmask = 1 << position_bitshift;
                 // Target qubit is setted to 0.
-                // Other qubits remain unchanged. 
+                // Other qubits remain unchanged.
                 let i_base = i & !bitmask;
                 let j_base = j & !bitmask;
 
@@ -252,7 +245,7 @@ impl DensityMatrix {
                     if self.data[data_idx] == Complex::ZERO {
                         return;
                     }
-                    
+
                     // println!("idx: {idx}, i: {i}, j: {j}, i_prime: {i_prime}, j_prime: {j_prime}");
                     // println!("op[b_i, p]: {}, self[{}, {}]: {}, op[b_j, q].conj(): {}\n",
                     //     op.data.data[b_i * 2 + p],
@@ -261,12 +254,11 @@ impl DensityMatrix {
                     //     self.data.data[i_prime * dim + j_prime],
                     //     op.data.data[b_j * 2 + q].conj()
                     // );
-                    sum += op.data[b_i * 2 + p]
-                        * self.data[data_idx]
-                        * op.data[b_j * 2 + q].conj();
+                    sum += op.data[b_i * 2 + p] * self.data[data_idx] * op.data[b_j * 2 + q].conj();
                 });
                 sum
-            }).collect();
+            })
+            .collect();
 
         std::mem::swap(&mut self.data, &mut new_dm);
         Ok(())
@@ -290,11 +282,11 @@ impl DensityMatrix {
                 ));
             }
         }
-    
+
         // Calculate dimensions
         let op_dim = 1 << op.nqubits;
         let dim = 1 << self.nqubits;
-    
+
         // Calculate target bitshifts
         let target_bitshifts: Vec<usize> = indices.iter().map(|i| self.nqubits - i - 1).collect();
         // Prepare a new density matrix
@@ -302,45 +294,53 @@ impl DensityMatrix {
             .map(|idx| {
                 let i = idx / dim;
                 let j = idx % dim;
-    
+
                 // Extract bits at target positions and compose bitmask
                 let mut b_i = 0;
                 let mut b_j = 0;
                 /* `target_bitshifts` is ordered from the most to the least significant bits
-                   to extract to `b_i` and `b_j`, therefore the iteration is reversed for
-                   `index` to match the weight of the extracted bits. */
-                let bitmask: usize = target_bitshifts.iter().rev().enumerate().map(|(index, t)| {
-                    b_i |= ((i >> t) & 1) << index;
-                    b_j |= ((j >> t) & 1) << index;
-                    1 << t
-                }).sum();
-        
+                to extract to `b_i` and `b_j`, therefore the iteration is reversed for
+                `index` to match the weight of the extracted bits. */
+                let bitmask: usize = target_bitshifts
+                    .iter()
+                    .rev()
+                    .enumerate()
+                    .map(|(index, t)| {
+                        b_i |= ((i >> t) & 1) << index;
+                        b_j |= ((j >> t) & 1) << index;
+                        1 << t
+                    })
+                    .sum();
+
                 // Get bits with targets set to 0
                 let i_base = i & !bitmask;
                 let j_base = j & !bitmask;
-    
+
                 let mut sum = Complex::ZERO;
-    
+
                 // Iterate over operator indices
                 (0..op_dim * op_dim).for_each(|op_idx| {
                     let p = op_idx / op_dim;
                     let q = op_idx % op_dim;
-    
+
                     let mut p_prime = 0;
                     let mut q_prime = 0;
-    
-                    target_bitshifts.iter().enumerate().for_each(|(index, &bitshift)| {
-                        let p_bit = (p >> (op.nqubits - index - 1)) & 1;
-                        let q_bit = (q >> (op.nqubits - index - 1)) & 1;
-                        p_prime |= p_bit << bitshift;
-                        q_prime |= q_bit << bitshift;
-                    });
-    
+
+                    target_bitshifts
+                        .iter()
+                        .enumerate()
+                        .for_each(|(index, &bitshift)| {
+                            let p_bit = (p >> (op.nqubits - index - 1)) & 1;
+                            let q_bit = (q >> (op.nqubits - index - 1)) & 1;
+                            p_prime |= p_bit << bitshift;
+                            q_prime |= q_bit << bitshift;
+                        });
+
                     let i_prime = i_base | p_prime;
                     let j_prime = j_base | q_prime;
-    
+
                     let data_idx = i_prime * dim + j_prime;
-    
+
                     if self.data[data_idx] != Complex::ZERO {
                         let contrib = op.data[b_i * op_dim + p]
                             * self.data[data_idx]
@@ -348,13 +348,13 @@ impl DensityMatrix {
                         sum += contrib;
                     }
                 });
-    
+
                 sum
-            }).collect();
+            })
+            .collect();
 
         Ok(new_dm)
     }
-    
 
     pub fn equals(&self, other: &DensityMatrix, tol: f64) -> bool {
         if self.data.len() == other.data.len() {
@@ -375,31 +375,31 @@ impl DensityMatrix {
     pub fn tensor(&mut self, other: &DensityMatrix) {
         // Update the number of qubits in `self`
         self.nqubits += other.nqubits;
-    
+
         // Calculate the new size and shape for the resulting tensor
         let new_dim = self.size * other.size;
-    
+
         // Create a new result tensor with the updated shape
         let mut result = vec![Complex::ZERO; new_dim * new_dim];
-    
+
         // Compute the tensor product in parallel
         result.iter_mut().enumerate().for_each(|(idx, res)| {
             // Decompose the linear index into 2D indices (i, j)
             let i = idx / new_dim;
             let j = idx % new_dim;
-    
+
             // Decompose indices into `self` and `other` components
             let (self_row, other_row) = (i / other.size, i % other.size);
             let (self_col, other_col) = (j / other.size, j % other.size);
-    
+
             // Retrieve elements from `self` and `other`
             let self_data = self.data[self_row * self.size + self_col];
             let other_data = other.data[other_row * other.size + other_col];
-    
+
             // Compute and store the result
             *res = self_data * other_data;
         });
-    
+
         // Update `self` with the resulting tensor
         self.data = result;
         self.size = new_dim; // Update the size for consistency
@@ -410,15 +410,15 @@ impl DensityMatrix {
         if !qargs.iter().all(|&e| e < n) {
             return Err("Wrong qubit argument for partial trace");
         }
-    
+
         let qargs_set: HashSet<usize> = qargs.iter().cloned().collect();
-    
+
         let total_dim = 2_usize.pow(n as u32);
-    
+
         // Indices for subsystems
         let remaining_qubits: Vec<usize> = (0..n).filter(|i| !qargs_set.contains(i)).collect();
         let remaining_dim = 2_usize.pow(remaining_qubits.len() as u32);
-        
+
         // Use a parallel iterator for the outer loop
         let reduced_dm = (0..remaining_dim * remaining_dim)
             .into_iter()
@@ -445,26 +445,26 @@ impl DensityMatrix {
                         full_i |= bit_value << new_pos;
                         full_j |= bit_value << new_pos;
                     }
-    
+
                     contribution += self.data[full_i * total_dim + full_j];
                 }
                 contribution
+            })
+            .collect();
 
-            }).collect();
-    
         // Update density matrix with the reduced one
         self.data = reduced_dm;
         self.nqubits -= qargs.len();
         self.size = 1 << self.nqubits;
         Ok(())
-    }  
+    }
 
     pub fn cz(&mut self, edge: &(usize, usize)) -> Result<Vec<Complex<f64>>, String> {
         self.evolve(&Operator::two_qubits(TwoQubitsOp::CZ), &[edge.0, edge.1])
 
         /* Otimized version of control Z gate */
         /*let (control, target) = *edge;
-        
+
         // Check that the control and target qubits are within bounds
         if control >= self.nqubits || target >= self.nqubits {
             return Err(format!(
@@ -472,34 +472,33 @@ impl DensityMatrix {
                 control, target, self.nqubits
             ));
         }
-    
+
         // Ensure the control and target qubits are distinct
         if control == target {
             return Err("Control and target qubits must be distinct.".to_string());
         }
-    
+
         // Calculate the bitmask for the control and target qubits
         let control_mask = 1 << (self.nqubits - control - 1);
         let target_mask = 1 << (self.nqubits - target - 1);
-    
+
         let dim = 1 << self.nqubits;
-    
+
         // Iterate through the density matrix
         let new_dm = (0..dim * dim)
             .map(|idx| {
                 let i = idx / dim;
                 let j = idx % dim;
-                if (i & control_mask == 1) && (i & target_mask == 1) 
+                if (i & control_mask == 1) && (i & target_mask == 1)
                     && (j & control_mask == 1) && (j & target_mask == 1) {
                     -self.data[idx]
                 } else {
                     self.data[idx]
                 }
             }).collect();
-    
+
         Ok(new_dm)*/
     }
-    
 
     pub fn swap(&mut self, edge: &(usize, usize)) -> Result<Vec<Complex<f64>>, String> {
         self.evolve(&Operator::two_qubits(TwoQubitsOp::SWAP), &[edge.0, edge.1])
