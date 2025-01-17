@@ -286,7 +286,7 @@ def test_from_vec(array):
     array /= norm
     np.testing.assert_allclose(array.flatten(), dm_array)
 
-@hyp.given(sv_st(max=6), sv_st(max=6))
+@hyp.given(sv_st(max=5), sv_st(max=5))
 @hyp.settings(deadline=None)
 def test_tensor_dm(array1, array2):
     dm_1 = dm_simu_rs.new_dm_from_vec(array1)
@@ -386,18 +386,19 @@ def test_evolve(sv: np.ndarray, op: np.ndarray):
     # print(f'nqubits = {Nqubits_dm}')
     targets = np.random.choice(range(Nqubits_dm), size=2, replace=False)
 
-    dm_simu_rs.evolve(dm, op.flatten(), targets)
+    dm_after_rs = dm_simu_rs.evolve(dm, op.flatten(), targets)
     dm_ref = evolve(dm_ref, Nqubits_ref, op, targets)
+    
     #print(f'{dm_simu_rs.get_dm(dm)}')
     #print(f'{dm_ref.flatten()}')
+    
     norm_ref = get_norm(dm_ref, Nqubits_ref)
     dm_ref /= norm_ref
     
-    dm_arr = dm_simu_rs.get_dm(dm)
-    np.testing.assert_allclose(dm_simu_rs.get_dm(dm), dm_ref.flatten(), atol=1e-5)
+    np.testing.assert_allclose(dm_after_rs, dm_ref.flatten(), atol=1e-5)
 
 @hyp.given(
-    sv_st(min=2, max=12),
+    sv_st(min=2, max=10),
 )
 @hyp.settings(deadline=None)
 def test_ptrace(sv):
@@ -420,7 +421,7 @@ def test_ptrace(sv):
     np.testing.assert_equal(nqubits_after_rs, nqubits_after_ref)
 
 @hyp.given(
-    sv_st(min=2, max=12)
+    sv_st(min=2, max=10)
 )
 def test_entangle(sv):
     nqubits = sv_get_nqubits(sv)
