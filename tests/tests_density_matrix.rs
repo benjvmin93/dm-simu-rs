@@ -512,7 +512,7 @@ mod tests_dm {
     #[test]
     fn test_evolve_cx_ket00_1() {
         let mut rho = DensityMatrix::new(2, State::ZERO);
-        rho.evolve(&Operator::two_qubits(TwoQubitsOp::CX), &[0, 1]);
+        rho.evolve_new(&Operator::two_qubits(TwoQubitsOp::CX), &[0, 1]);
         let expected_data = vec![
             Complex::new(1., 0.),
             Complex::new(0., 0.),
@@ -536,7 +536,7 @@ mod tests_dm {
     #[test]
     fn test_evolve_cx_ket00_2() {
         let mut rho = DensityMatrix::new(2, State::ZERO);
-        rho.evolve(&Operator::two_qubits(TwoQubitsOp::CX), &[1, 0]);
+        rho.evolve_new(&Operator::two_qubits(TwoQubitsOp::CX), &[1, 0]);
         let expected_data = vec![
             Complex::new(1., 0.),
             Complex::new(0., 0.),
@@ -566,7 +566,7 @@ mod tests_dm {
             Complex::new(0., 0.),
         ])
         .unwrap();
-        rho.evolve(&Operator::two_qubits(TwoQubitsOp::CX), &[1, 0]);
+        rho.evolve_new(&Operator::two_qubits(TwoQubitsOp::CX), &[1, 0]);
         let expected_data = vec![
             Complex::new(0., 0.),
             Complex::new(0., 0.),
@@ -596,7 +596,7 @@ mod tests_dm {
             Complex::new(0., 0.),
         ])
         .unwrap();
-        rho.evolve(&Operator::two_qubits(TwoQubitsOp::CX), &[0, 1]);
+        rho.evolve_new(&Operator::two_qubits(TwoQubitsOp::CX), &[0, 1]);
         let expected_data = vec![
             Complex::new(0., 0.),
             Complex::new(0., 0.),
@@ -626,7 +626,7 @@ mod tests_dm {
             Complex::new(1., 0.),
         ])
         .unwrap();
-        rho.evolve(&Operator::two_qubits(TwoQubitsOp::CX), &[0, 1]);
+        rho.evolve_new(&Operator::two_qubits(TwoQubitsOp::CX), &[0, 1]);
         let expected_data = vec![
             Complex::new(0., 0.),
             Complex::new(0., 0.),
@@ -651,7 +651,7 @@ mod tests_dm {
     #[test]
     fn test_evolve_cz_ket00() {
         let mut rho = DensityMatrix::new(2, State::ZERO);
-        rho.evolve(&Operator::two_qubits(TwoQubitsOp::CZ), &[0, 1]);
+        rho.evolve_new(&Operator::two_qubits(TwoQubitsOp::CZ), &[0, 1]);
         let expected_data = vec![
             Complex::new(1., 0.),
             Complex::new(0., 0.),
@@ -676,7 +676,7 @@ mod tests_dm {
     #[test]
     fn test_evolve_swap_ket00() {
         let mut rho = DensityMatrix::new(2, State::ZERO);
-        rho.evolve(&Operator::two_qubits(TwoQubitsOp::SWAP), &[0, 1]);
+        rho.evolve_new(&Operator::two_qubits(TwoQubitsOp::SWAP), &[0, 1]);
         let expected_data = vec![
             Complex::new(1., 0.),
             Complex::new(0., 0.),
@@ -712,7 +712,7 @@ mod tests_dm {
         ])
         .unwrap();
 
-        rho.evolve(&Operator::two_qubits(TwoQubitsOp::SWAP), &[2, 1]);
+        rho.evolve_new(&Operator::two_qubits(TwoQubitsOp::SWAP), &[2, 1]);
         let expected_data = vec![
             Complex::ZERO,
             Complex::ZERO,
@@ -795,7 +795,7 @@ mod tests_dm {
         ])
         .unwrap();
 
-        rho.evolve(&Operator::two_qubits(TwoQubitsOp::SWAP), &[1, 2]);
+        rho.evolve_new(&Operator::two_qubits(TwoQubitsOp::SWAP), &[1, 2]);
         let expected_data = vec![
             Complex::ZERO,
             Complex::ZERO,
@@ -878,7 +878,7 @@ mod tests_dm {
         ])
         .unwrap();
 
-        rho.evolve(&Operator::two_qubits(TwoQubitsOp::SWAP), &[2, 0]);
+        rho.evolve_new(&Operator::two_qubits(TwoQubitsOp::SWAP), &[2, 0]);
         let expected_data = vec![
             Complex::ZERO,
             Complex::ZERO,
@@ -961,7 +961,7 @@ mod tests_dm {
         ])
         .unwrap();
 
-        rho.evolve(&Operator::two_qubits(TwoQubitsOp::SWAP), &[0, 2]);
+        rho.evolve_new(&Operator::two_qubits(TwoQubitsOp::SWAP), &[0, 2]);
         let expected_data = vec![
             Complex::ZERO,
             Complex::ZERO,
@@ -1044,7 +1044,7 @@ mod tests_dm {
         ])
         .unwrap();
 
-        rho.evolve(&Operator::two_qubits(TwoQubitsOp::SWAP), &[0, 2]);
+        rho.evolve_new(&Operator::two_qubits(TwoQubitsOp::SWAP), &[0, 2]);
         let expected_data = vec![
             Complex::ZERO,
             Complex::ZERO,
@@ -1127,7 +1127,7 @@ mod tests_dm {
         ])
         .unwrap();
 
-        rho.evolve(&Operator::two_qubits(TwoQubitsOp::SWAP), &[0, 1]);
+        rho.evolve_new(&Operator::two_qubits(TwoQubitsOp::SWAP), &[0, 1]);
         let expected_data = vec![
             Complex::ZERO,
             Complex::ZERO,
@@ -1210,7 +1210,7 @@ mod tests_dm {
         ])
         .unwrap();
 
-        rho.evolve(&Operator::two_qubits(TwoQubitsOp::SWAP), &[1, 2]);
+        rho.evolve_new(&Operator::two_qubits(TwoQubitsOp::SWAP), &[1, 2]);
         let expected_data = vec![
             Complex::ZERO,
             Complex::ZERO,
@@ -1299,16 +1299,14 @@ mod tests_dm {
     #[should_panic]
     fn test_evolve_out_of_range_target() {
         let mut rho = DensityMatrix::new(3, State::ZERO);
-        rho.evolve(&Operator::two_qubits(TwoQubitsOp::CX), &[0, 3])
-            .unwrap();
+        rho.evolve_new(&Operator::two_qubits(TwoQubitsOp::CX), &[0, 3]);
     }
 
     #[test]
     #[should_panic]
     fn test_evolve_similar_indices() {
         let mut rho = DensityMatrix::new(3, State::ZERO);
-        rho.evolve(&Operator::two_qubits(TwoQubitsOp::CX), &[0, 0])
-            .unwrap();
+        rho.evolve_new(&Operator::two_qubits(TwoQubitsOp::CX), &[0, 0]);
     }
 
     #[test]

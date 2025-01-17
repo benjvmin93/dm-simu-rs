@@ -129,10 +129,11 @@ fn dm_simu_rs<'py>(
         py_dm: PyVec<'py>,
         op: numpy::borrow::PyReadonlyArrayDyn<Complex<f64>>,
         qubits: Vec<usize>,
-    ) -> pyo3::prelude::PyResult<()> {
+    ) -> pyo3::prelude::Bound<'py, numpy::array::PyArray1<Complex<f64>>> {
         let dm = get_dm_mut_ref(py_dm);
-        let op = Operator::new(op.as_slice()?).unwrap();
-        Ok(dm.evolve(&op, &qubits).unwrap())
+        let op = Operator::new(op.as_slice().unwrap()).unwrap();
+        let new_dm = dm.evolve(&op, &qubits).unwrap();
+        numpy::IntoPyArray::into_pyarray_bound(new_dm, py)
     }
     m.add_function(pyo3::wrap_pyfunction!(evolve, m)?)?;
 
@@ -149,9 +150,10 @@ fn dm_simu_rs<'py>(
     m.add_function(pyo3::wrap_pyfunction!(entangle, m)?)?;
 
     #[pyo3::pyfunction]
-    fn swap<'py>(py_vec: PyVec<'py>, qubits: (usize, usize)) -> pyo3::prelude::PyResult<()> {
+    fn swap<'py>(py: pyo3::prelude::Python<'py>, py_vec: PyVec<'py>, qubits: (usize, usize)) -> pyo3::prelude::Bound<'py, numpy::array::PyArray1<Complex<f64>>> {
         let dm = get_dm_mut_ref(py_vec);
-        Ok(dm.swap(&qubits))
+        let result = dm.swap(&qubits).unwrap();
+        numpy::IntoPyArray::into_pyarray_bound(result, py)
     }
     m.add_function(pyo3::wrap_pyfunction!(swap, m)?)?;
 

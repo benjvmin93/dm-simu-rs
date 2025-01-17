@@ -1,8 +1,8 @@
 use core::fmt;
 use std::collections::HashSet;
+use std::mem;
 
 use num_complex::Complex;
-use num_traits::ConstZero;
 use rayon::iter::{IndexedParallelIterator, IntoParallelRefIterator, ParallelIterator};
 
 use crate::operators::{Operator, TwoQubitsOp};
@@ -272,7 +272,12 @@ impl DensityMatrix {
         Ok(())
     }
 
-    pub fn evolve(&mut self, op: &Operator, indices: &[usize]) -> Result<(), String> {
+    pub fn evolve_new(&mut self, op: &Operator, indices: &[usize]) -> () {
+        let mut new_dm = self.evolve(op, indices).unwrap();
+        mem::swap(&mut self.data, &mut new_dm);
+    }
+
+    pub fn evolve(&self, op: &Operator, indices: &[usize]) -> Result<Vec<Complex<f64>>, String> {
         // Check for unique indices
         if !are_elements_unique(indices) {
             return Err("Target qubits must be unique.".to_string());
@@ -293,7 +298,7 @@ impl DensityMatrix {
         // Calculate target bitshifts
         let target_bitshifts: Vec<usize> = indices.iter().map(|i| self.nqubits - i - 1).collect();
         // Prepare a new density matrix
-        let mut new_dm: Vec<Complex<f64>> = (0..dim * dim)
+        let new_dm: Vec<Complex<f64>> = (0..dim * dim)
             .map(|idx| {
                 let i = idx / dim;
                 let j = idx % dim;
@@ -346,9 +351,8 @@ impl DensityMatrix {
     
                 sum
             }).collect();
-    
-        std::mem::swap(&mut self.data, &mut new_dm);
-        Ok(())
+
+        Ok(new_dm)
     }
     
 
@@ -456,8 +460,10 @@ impl DensityMatrix {
     }  
 
     pub fn cz(&mut self, edge: &(usize, usize)) -> Result<Vec<Complex<f64>>, String> {
+        self.evolve(&Operator::two_qubits(TwoQubitsOp::CZ), &[edge.0, edge.1])
+
         /* Otimized version of control Z gate */
-        let (control, target) = *edge;
+        /*let (control, target) = *edge;
         
         // Check that the control and target qubits are within bounds
         if control >= self.nqubits || target >= self.nqubits {
@@ -491,15 +497,15 @@ impl DensityMatrix {
                 }
             }).collect();
     
-        Ok(new_dm)
+        Ok(new_dm)*/
     }
     
 
-    pub fn swap(&mut self, edge: &(usize, usize)) {
-        self.evolve(&Operator::two_qubits(TwoQubitsOp::SWAP), &[edge.0, edge.1]);
+    pub fn swap(&mut self, edge: &(usize, usize)) -> Result<Vec<Complex<f64>>, String> {
+        self.evolve(&Operator::two_qubits(TwoQubitsOp::SWAP), &[edge.0, edge.1])
     }
 
-    pub fn cnot(&mut self, edge: &(usize, usize)) {
-        self.evolve(&Operator::two_qubits(TwoQubitsOp::CX), &[edge.0, edge.1]);
+    pub fn cnot(&mut self, edge: &(usize, usize)) -> Result<Vec<Complex<f64>>, String> {
+        self.evolve(&Operator::two_qubits(TwoQubitsOp::CX), &[edge.0, edge.1])
     }
 }
