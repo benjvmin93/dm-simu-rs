@@ -31,8 +31,19 @@ impl fmt::Display for DensityMatrix {
 }
 
 impl DensityMatrix {
+    pub fn empty() -> Self {
+        return DensityMatrix {
+            nqubits: 0,
+            data: vec![Complex::ONE],
+            size: 0
+        }
+    }
     // By default initialize in |0>.
     pub fn new(nqubits: usize, initial_state: State) -> Self {
+        if nqubits == 0 {
+            return DensityMatrix::empty();
+        }
+
         let size = 1 << nqubits;
         match initial_state {
             State::PLUS => {

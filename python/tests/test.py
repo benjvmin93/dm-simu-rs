@@ -259,6 +259,17 @@ def test_new_dm(nqubits, state):
     ref = functools.reduce(np.kron, (rho for _ in range(nqubits)), np.array(1, dtype=np.complex128))
     np.testing.assert_allclose(array, ref.flatten())
 
+def test_empty_dm():
+    """
+        Test for initializing an empty density matrix. Either with 0 qubit or with an empty vector passed in arguments.
+        In these cases, the program should return a new density matrix with an empty vector data, 0 qubit.
+    """
+    dm = dm_simu_rs.new_empty_dm()
+    dm_arr = dm_simu_rs.get_dm(dm)
+    assert dm_simu_rs.get_nqubits(dm) == 0
+    assert len(dm_arr) == 1
+    assert dm_arr[0] == 1. + 0j
+
 
 @hyp.given(sv_st(max=6))
 def test_from_statevec(array):

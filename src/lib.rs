@@ -74,6 +74,15 @@ fn dm_simu_rs<'py>(
     m.add_function(pyo3::wrap_pyfunction!(new_dm_from_statevec, m)?)?;
 
     #[pyo3::pyfunction]
+    fn new_empty_dm<'py>(py: pyo3::prelude::Python<'py>) -> pyo3::prelude::PyResult<PyVec<'py>> {
+        make_dm_pyvec(
+            py,
+            DensityMatrix::empty()
+        )
+    }
+    m.add_function(pyo3::wrap_pyfunction!(new_empty_dm, m)?)?;
+
+    #[pyo3::pyfunction]
     fn new_dm_from_vec<'py>(
         py: pyo3::prelude::Python<'py>,
         vec: numpy::borrow::PyReadonlyArrayDyn<Complex<f64>>,
