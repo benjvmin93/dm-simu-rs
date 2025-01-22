@@ -17,26 +17,6 @@ impl fmt::Display for DisplayComplex {
     }
 }
 
-pub fn bitwise_int_to_bin_vec(mut num: usize, mut n: usize) -> Vec<u8> {
-    let mut bin_vec: Vec<u8> = Vec::new();
-    while n > 0 {
-        bin_vec.push((num & 1) as u8);
-        num >>= 1;
-        n -= 1;
-    }
-    bin_vec.reverse();
-    bin_vec
-}
-
-pub fn bitwise_bin_vec_to_int(bin_vec: &[u8]) -> usize {
-    let mut weight = 0;
-    bin_vec.iter().for_each(|b| {
-        weight <<= 1;
-        weight |= *b as usize;
-    });
-    weight
-}
-
 pub fn complex_approx_eq(a: Complex<f64>, b: Complex<f64>, tol: f64) -> bool {
     let re_diff = (a.re - b.re).abs();
     let im_diff = (a.im - b.im).abs();
