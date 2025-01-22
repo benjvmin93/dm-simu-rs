@@ -261,14 +261,14 @@ def test_new_dm(nqubits, state):
 
 
 @hyp.given(sv_st(max=6))
-def test_from_vec(array):
+def test_from_statevec(array):
     nqubits = sv_get_nqubits(array)
 
     # print(f'Testing with a statevec of size {len(array)} => nqubits = {nqubits}')
     norm = get_norm(np.outer(array, array.conj()), nqubits)
     try:
         # print(array)
-        dm = dm_simu_rs.new_dm_from_vec(array)
+        dm = dm_simu_rs.new_dm_from_statevec(array)
         assert norm != 0
         # print(f'Successfully created a dm of size {len(dm_simu_rs.get_dm(dm))}')
     except ValueError:
@@ -289,8 +289,8 @@ def test_from_vec(array):
 @hyp.given(sv_st(max=5), sv_st(max=5))
 @hyp.settings(deadline=None)
 def test_tensor_dm(array1, array2):
-    dm_1 = dm_simu_rs.new_dm_from_vec(array1)
-    dm_2 = dm_simu_rs.new_dm_from_vec(array2)
+    dm_1 = dm_simu_rs.new_dm_from_statevec(array1)
+    dm_2 = dm_simu_rs.new_dm_from_statevec(array2)
     nqubits_1 = sv_get_nqubits(array1)
     nqubits_2 = sv_get_nqubits(array2)
     ref_1 = np.outer(array1, array1.conj())
@@ -313,7 +313,7 @@ def test_tensor_dm(array1, array2):
 )
 @hyp.settings(deadline=None)
 def test_expectation_single(sv, op):
-    dm = dm_simu_rs.new_dm_from_vec(sv)
+    dm = dm_simu_rs.new_dm_from_statevec(sv)
     nqubits = sv_get_nqubits(sv)
     
     dm_arr = dm_simu_rs.get_dm(dm)
@@ -343,7 +343,7 @@ def test_evolve_single(sv: np.ndarray, op: np.ndarray):
     """
             Test for evolve density matrix with single qubit operators.
     """
-    dm = dm_simu_rs.new_dm_from_vec(sv.flatten())
+    dm = dm_simu_rs.new_dm_from_statevec(sv.flatten())
     dm_ref = np.outer(sv, sv)
 
     dm_arr = dm_simu_rs.get_dm(dm)
@@ -354,14 +354,14 @@ def test_evolve_single(sv: np.ndarray, op: np.ndarray):
     assert Nqubits_dm == Nqubits_ref
     
     target = np.random.randint(0, Nqubits_dm)
-    dm_simu_rs.evolve_single(dm, op.flatten(), target)
+    dm_rs = dm_simu_rs.evolve_single(dm, op.flatten(), target)
     dm_ref = evolve_single(dm_ref, Nqubits_ref, op, target)
 
     norm_ref = get_norm(dm_ref, Nqubits_ref)
     dm_ref /= norm_ref
     
     dm_arr = dm_simu_rs.get_dm(dm)
-    np.testing.assert_allclose(dm_simu_rs.get_dm(dm), dm_ref.flatten(), atol=1e-5)
+    np.testing.assert_allclose(dm_rs, dm_ref.flatten(), atol=1e-5)
 
 
 @hyp.given(
@@ -373,7 +373,7 @@ def test_evolve(sv: np.ndarray, op: np.ndarray):
     """
             Test for evolve density matrix with any operator.
     """
-    dm = dm_simu_rs.new_dm_from_vec(sv)
+    dm = dm_simu_rs.new_dm_from_statevec(sv)
     dm_ref = np.outer(sv, sv)
 
     dm_arr = dm_simu_rs.get_dm(dm)
@@ -404,7 +404,7 @@ def test_evolve(sv: np.ndarray, op: np.ndarray):
 def test_ptrace(sv):
     nqubits = sv_get_nqubits(sv)
 
-    rust_dm = dm_simu_rs.new_dm_from_vec(sv)
+    rust_dm = dm_simu_rs.new_dm_from_statevec(sv)
     ref_dm = np.outer(sv, sv.conj())
     
     qargs = np.random.choice(range(nqubits), size=np.random.randint(1, nqubits), replace=False)
@@ -426,7 +426,7 @@ def test_ptrace(sv):
 def test_entangle(sv):
     nqubits = sv_get_nqubits(sv)
 
-    rust_dm = dm_simu_rs.new_dm_from_vec(sv)
+    rust_dm = dm_simu_rs.new_dm_from_statevec(sv)
     ref_dm = np.outer(sv, sv.conj())
 
     qargs = tuple(np.random.choice(range(nqubits), size=2, replace=False))

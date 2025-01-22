@@ -233,8 +233,7 @@ mod tests_dm {
     #[test]
     fn test_one_qubit_evolve_single_i() {
         let mut rho = DensityMatrix::new(1, State::ZERO);
-        rho.evolve_single(&Operator::one_qubit(OneQubitOp::I), 0)
-            .unwrap();
+        rho.evolve_single_new(&Operator::one_qubit(OneQubitOp::I), 0);
 
         let expected_data = &[
             Complex::new(1., 0.),
@@ -247,8 +246,7 @@ mod tests_dm {
     #[test]
     fn test_one_qubit_evolve_single_h() {
         let mut rho = DensityMatrix::new(1, State::ZERO);
-        rho.evolve_single(&Operator::one_qubit(OneQubitOp::H), 0)
-            .unwrap();
+        rho.evolve_single_new(&Operator::one_qubit(OneQubitOp::H), 0);
         let expected_data = DensityMatrix::from_vec(&[
             Complex::new(0.5, 0.),
             Complex::new(0.5, 0.),
@@ -261,8 +259,7 @@ mod tests_dm {
     #[test]
     fn test_one_qubit_evolve_single_x() {
         let mut rho = DensityMatrix::new(1, State::ZERO);
-        rho.evolve_single(&Operator::one_qubit(OneQubitOp::X), 0)
-            .unwrap();
+        rho.evolve_single_new(&Operator::one_qubit(OneQubitOp::X), 0);
         let expected_data = DensityMatrix::from_vec(&[
             Complex::new(0., 0.),
             Complex::new(0., 0.),
@@ -275,8 +272,7 @@ mod tests_dm {
     #[test]
     fn test_one_qubit_evolve_single_y() {
         let mut rho = DensityMatrix::new(1, State::ZERO);
-        rho.evolve_single(&Operator::one_qubit(OneQubitOp::Y), 0)
-            .unwrap();
+        rho.evolve_single_new(&Operator::one_qubit(OneQubitOp::Y), 0);
         let expected_data = DensityMatrix::from_vec(&[
             Complex::new(0., 0.),
             Complex::new(0., 0.),
@@ -289,8 +285,7 @@ mod tests_dm {
     #[test]
     fn test_one_qubit_evolve_single_z() {
         let mut rho = DensityMatrix::new(1, State::ZERO);
-        rho.evolve_single(&Operator::one_qubit(OneQubitOp::Z), 0)
-            .unwrap();
+        rho.evolve_single_new(&Operator::one_qubit(OneQubitOp::Z), 0);
         let expected_data = DensityMatrix::from_vec(&[
             Complex::new(1., 0.),
             Complex::new(0., 0.),
@@ -309,8 +304,7 @@ mod tests_dm {
 
     fn test_one_qubit_evolve_single_i_2() {
         let mut rho = DensityMatrix::new(1, State::PLUS);
-        rho.evolve_single(&Operator::one_qubit(OneQubitOp::I), 0)
-            .unwrap();
+        rho.evolve_single_new(&Operator::one_qubit(OneQubitOp::I), 0);
         println!("{rho:}");
 
         let expected_data = DensityMatrix::from_vec(&[
@@ -327,8 +321,7 @@ mod tests_dm {
     #[test]
     fn test_two_qubits_evolve_single_i() {
         let mut rho = DensityMatrix::new(2, State::ZERO);
-        rho.evolve_single(&Operator::one_qubit(OneQubitOp::I), 0)
-            .unwrap();
+        rho.evolve_single_new(&Operator::one_qubit(OneQubitOp::I), 0);
         let expected_data = DensityMatrix::from_vec(&[
             Complex::new(1., 0.),
             Complex::new(0., 0.),
@@ -353,8 +346,7 @@ mod tests_dm {
     #[test]
     fn test_two_qubits_evolve_single_h() {
         let mut rho = DensityMatrix::new(2, State::ZERO);
-        rho.evolve_single(&Operator::one_qubit(OneQubitOp::H), 0)
-            .unwrap();
+        rho.evolve_single_new(&Operator::one_qubit(OneQubitOp::H), 0);
         let expected_data = DensityMatrix::from_vec(&[
             Complex::new(0.5, 0.),
             Complex::new(0., 0.),
@@ -379,8 +371,7 @@ mod tests_dm {
     #[test]
     fn test_two_qubits_evolve_single_x() {
         let mut rho = DensityMatrix::new(2, State::ZERO);
-        rho.evolve_single(&Operator::one_qubit(OneQubitOp::X), 0)
-            .unwrap();
+        rho.evolve_single_new(&Operator::one_qubit(OneQubitOp::X), 0);
         let expected_data = DensityMatrix::from_vec(&[
             Complex::new(0., 0.),
             Complex::new(0., 0.),
@@ -405,7 +396,7 @@ mod tests_dm {
     #[test]
     fn test_two_qubits_evolve_single_y() {
         let mut rho = DensityMatrix::new(2, State::ZERO);
-        rho.evolve_single(&Operator::one_qubit(OneQubitOp::Y), 0);
+        rho.evolve_single_new(&Operator::one_qubit(OneQubitOp::Y), 0);
         let expected_data = DensityMatrix::from_vec(&[
             Complex::new(0., 0.),
             Complex::new(0., 0.),
@@ -430,7 +421,7 @@ mod tests_dm {
     #[test]
     fn test_two_qubits_evolve_single_z() {
         let mut rho = DensityMatrix::new(2, State::ZERO);
-        rho.evolve_single(&Operator::one_qubit(OneQubitOp::Z), 0);
+        rho.evolve_single_new(&Operator::one_qubit(OneQubitOp::Z), 0);
         let expected_data = DensityMatrix::from_vec(&[
             Complex::new(1., 0.),
             Complex::new(0., 0.),
@@ -1229,16 +1220,14 @@ mod tests_dm {
     #[should_panic]
     fn test_evolve_single_out_of_range_target() {
         let mut rho = DensityMatrix::new(3, State::ZERO);
-        rho.evolve_single(&Operator::one_qubit(OneQubitOp::X), 5)
-            .unwrap();
+        rho.evolve_single_new(&Operator::one_qubit(OneQubitOp::X), 5);
     }
 
     #[test]
     #[should_panic]
     fn test_evolve_single_wrong_operator() {
         let mut rho = DensityMatrix::new(3, State::ZERO);
-        rho.evolve_single(&Operator::two_qubits(TwoQubitsOp::CZ), 0)
-            .unwrap();
+        rho.evolve_single_new(&Operator::two_qubits(TwoQubitsOp::CZ), 0);
     }
 
     #[test]

@@ -3,7 +3,7 @@ use std::collections::HashSet;
 use std::mem;
 
 use num_complex::Complex;
-use rayon::iter::{IndexedParallelIterator, IntoParallelRefIterator, ParallelIterator};
+use rayon::prelude::*;
 
 use crate::operators::{Operator, TwoQubitsOp};
 use crate::tools::{are_elements_unique, complex_approx_eq};
@@ -192,18 +192,28 @@ impl DensityMatrix {
     }
 
     pub fn trace(&self) -> Complex<f64> {
-        // Compute the sum over the diagonal elements.
-        (0..self.size)
-            .map(|i| self.get(i, i))
-            .fold(Complex::ZERO, |acc, x| acc + x) // Fold ensures a starting value
+        // Direct indexing for trace calculation
+        (0..self.size).map(|i| self.data[i * self.size + i]).sum()
     }
-
+    
     pub fn normalize(&mut self) {
         let trace = self.trace();
-        self.data = self.data.par_iter().map(|&c| c / trace).collect::<Vec<_>>();
+        if trace != Complex::ONE {
+            // Conditional parallelism based on matrix size
+            if self.data.len() > 100 {
+                self.data.par_iter_mut().for_each(|c| *c /= trace);
+            } else {
+                self.data.iter_mut().for_each(|c| *c /= trace);
+            }
+        }
     }
 
-    pub fn evolve_single(&mut self, op: &Operator, index: usize) -> Result<(), String> {
+    pub fn evolve_single_new(&mut self, op: &Operator, index: usize) -> () {
+        let mut new_dm = self.evolve_single(op, index).unwrap();
+        std::mem::swap(&mut self.data, &mut new_dm);
+    }
+
+    pub fn evolve_single(&self, op: &Operator, index: usize) -> Result<Vec<Complex<f64>>, String> {
         if index >= self.nqubits {
             return Err(format!(
                 "Target qubit {} is not in the range [0-{}].",
@@ -217,7 +227,8 @@ impl DensityMatrix {
         let dim = 1 << self.nqubits;
         let position_bitshift = self.nqubits - index - 1;
 
-        let mut new_dm: Vec<Complex<f64>> = (0..dim * dim)
+        let new_dm: Vec<Complex<f64>> = (0..dim * dim)
+            .into_par_iter()
             .map(|idx| {
                 let i = idx / dim;
                 let j = idx % dim;
@@ -259,9 +270,7 @@ impl DensityMatrix {
                 sum
             })
             .collect();
-
-        std::mem::swap(&mut self.data, &mut new_dm);
-        Ok(())
+        Ok(new_dm)
     }
 
     pub fn evolve_new(&mut self, op: &Operator, indices: &[usize]) -> () {
@@ -291,6 +300,7 @@ impl DensityMatrix {
         let target_bitshifts: Vec<usize> = indices.iter().map(|i| self.nqubits - i - 1).collect();
         // Prepare a new density matrix
         let new_dm: Vec<Complex<f64>> = (0..dim * dim)
+            .into_par_iter()
             .map(|idx| {
                 let i = idx / dim;
                 let j = idx % dim;
@@ -379,11 +389,10 @@ impl DensityMatrix {
         // Calculate the new size and shape for the resulting tensor
         let new_dim = self.size * other.size;
 
-        // Create a new result tensor with the updated shape
-        let mut result = vec![Complex::ZERO; new_dim * new_dim];
-
         // Compute the tensor product in parallel
-        result.iter_mut().enumerate().for_each(|(idx, res)| {
+        let result = (0..new_dim * new_dim)
+            .into_par_iter()
+            .map(|idx| {
             // Decompose the linear index into 2D indices (i, j)
             let i = idx / new_dim;
             let j = idx % new_dim;
@@ -397,8 +406,8 @@ impl DensityMatrix {
             let other_data = other.data[other_row * other.size + other_col];
 
             // Compute and store the result
-            *res = self_data * other_data;
-        });
+            self_data * other_data
+        }).collect();
 
         // Update `self` with the resulting tensor
         self.data = result;
@@ -421,7 +430,7 @@ impl DensityMatrix {
 
         // Use a parallel iterator for the outer loop
         let reduced_dm = (0..remaining_dim * remaining_dim)
-            .into_iter()
+            .into_par_iter()
             .map(|idx| {
                 let reduced_i = idx / remaining_dim;
                 let reduced_j = idx % remaining_dim;
@@ -460,7 +469,8 @@ impl DensityMatrix {
     }
 
     pub fn cz(&mut self, edge: &(usize, usize)) -> Result<Vec<Complex<f64>>, String> {
-        self.evolve(&Operator::two_qubits(TwoQubitsOp::CZ), &[edge.0, edge.1])
+        let new_dm = self.evolve(&Operator::two_qubits(TwoQubitsOp::CZ), &[edge.0, edge.1]).unwrap();
+        Ok(new_dm)
 
         /* Otimized version of control Z gate */
         /*let (control, target) = *edge;
@@ -501,10 +511,13 @@ impl DensityMatrix {
     }
 
     pub fn swap(&mut self, edge: &(usize, usize)) -> Result<Vec<Complex<f64>>, String> {
-        self.evolve(&Operator::two_qubits(TwoQubitsOp::SWAP), &[edge.0, edge.1])
+        let new_dm = self.evolve(&Operator::two_qubits(TwoQubitsOp::SWAP), &[edge.0, edge.1]).unwrap();
+        Ok(new_dm)
+
     }
 
     pub fn cnot(&mut self, edge: &(usize, usize)) -> Result<Vec<Complex<f64>>, String> {
-        self.evolve(&Operator::two_qubits(TwoQubitsOp::CX), &[edge.0, edge.1])
+        let new_dm = self.evolve(&Operator::two_qubits(TwoQubitsOp::CX), &[edge.0, edge.1]).unwrap();
+        Ok(new_dm)
     }
 }
