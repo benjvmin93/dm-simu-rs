@@ -479,9 +479,8 @@ impl DensityMatrix {
         Ok(())
     }
 
-    pub fn cz(&mut self, edge: &(usize, usize)) -> Result<Vec<Complex<f64>>, String> {
-        let new_dm = self.evolve(&Operator::two_qubits(TwoQubitsOp::CZ), &[edge.0, edge.1]).unwrap();
-        Ok(new_dm)
+    pub fn cz(&self, edge: &(usize, usize)) -> Result<Vec<Complex<f64>>, String> {
+        self.evolve(&Operator::two_qubits(TwoQubitsOp::CZ), &[edge.0, edge.1])
 
         /* Otimized version of control Z gate */
         /*let (control, target) = *edge;
@@ -521,14 +520,12 @@ impl DensityMatrix {
         Ok(new_dm)*/
     }
 
-    pub fn swap(&mut self, edge: &(usize, usize)) -> Result<Vec<Complex<f64>>, String> {
-        let new_dm = self.evolve(&Operator::two_qubits(TwoQubitsOp::SWAP), &[edge.0, edge.1]).unwrap();
-        Ok(new_dm)
+    pub fn swap(&self, edge: &(usize, usize)) -> Result<Vec<Complex<f64>>, String> {
+        self.evolve(&Operator::two_qubits(TwoQubitsOp::SWAP), &[edge.0, edge.1])
 
     }
 
-    pub fn cnot(&mut self, edge: &(usize, usize)) -> Result<Vec<Complex<f64>>, String> {
-        let new_dm = self.evolve(&Operator::two_qubits(TwoQubitsOp::CX), &[edge.0, edge.1]).unwrap();
-        Ok(new_dm)
+    pub fn cnot(&self, edge: &(usize, usize)) -> Result<Vec<Complex<f64>>, String> {
+        self.evolve(&Operator::two_qubits(TwoQubitsOp::CX), &[edge.0, edge.1])
     }
 }
