@@ -35,7 +35,7 @@ impl DensityMatrix {
         return DensityMatrix {
             nqubits: 0,
             data: vec![Complex::ONE],
-            size: 0
+            size: 1
         }
     }
     // By default initialize in |0>.
