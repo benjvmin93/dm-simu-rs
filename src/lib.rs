@@ -190,11 +190,42 @@ fn dm_simu_rs<'py>(
         py_dm: PyVec<'py>,
         op: numpy::borrow::PyReadonlyArrayDyn<Complex<f64>>,
         qubits: Vec<usize>,
-    ) -> pyo3::prelude::Bound<'py, numpy::array::PyArray1<Complex<f64>>> {
+    ) -> pyo3::prelude::PyResult<pyo3::Bound<'py, numpy::array::PyArray1<Complex<f64>>>> {
         let dm = get_dm_mut_ref(py_dm);
-        let op = Operator::new(op.as_slice().unwrap()).unwrap();
-        let new_dm = dm.evolve(&op, &qubits).unwrap();
-        numpy::IntoPyArray::into_pyarray_bound(new_dm, py)
+        let op = op.as_slice().unwrap();
+
+        let op = match std::panic::catch_unwind(|| Operator::new(op)) {
+            Ok(Ok(result)) => result,
+            Ok(Err(e)) => return Err(pyo3::exceptions::PyValueError::new_err(e)),
+            Err(err) => {
+                let panic_message = if let Some(s) = err.downcast_ref::<&str>() {
+                    *s
+                } else if let Some(s) = err.downcast_ref::<String>() {
+                    s.as_str()
+                } else {
+                    "Unknown panic occurred"
+                };
+                return Err(pyo3::exceptions::PyRuntimeError::new_err(format!("Rust panic: {}", panic_message)));
+            }
+        };
+
+        let new_dm = match std::panic::catch_unwind(|| dm.evolve(&op, &qubits)) {
+            Ok(Ok(result)) => result,
+            Ok(Err(e)) => return Err(pyo3::exceptions::PyValueError::new_err(e)),
+            Err(err) => {
+                let panic_message = if let Some(s) = err.downcast_ref::<&str>() {
+                    *s
+                } else if let Some(s) = err.downcast_ref::<String>() {
+                    s.as_str()
+                } else {
+                    "Unknown panic occurred"
+                };
+                return Err(pyo3::exceptions::PyRuntimeError::new_err(format!("Rust panic: {}", panic_message)));
+            }
+        };
+
+        // Use the bound method and extract the PyArray
+        Ok(numpy::array::PyArray1::from_vec_bound(py, new_dm))
     }
     m.add_function(pyo3::wrap_pyfunction!(evolve, m)?)?;
 
@@ -203,22 +234,78 @@ fn dm_simu_rs<'py>(
         py: pyo3::prelude::Python<'py>,
         py_vec: PyVec<'py>,
         qubits: (usize, usize),
-    ) -> pyo3::prelude::Bound<'py, numpy::array::PyArray1<Complex<f64>>> {
-        let dm = get_dm_mut_ref(py_vec);
-        let result = dm.cz(&qubits).unwrap();
-        numpy::IntoPyArray::into_pyarray_bound(result, py)
+    ) -> pyo3::prelude::PyResult<pyo3::Bound<'py, numpy::array::PyArray1<Complex<f64>>>> {
+        let dm = get_dm_ref(py_vec);
+
+        let result = match std::panic::catch_unwind(|| dm.cz(&qubits)) {
+            Ok(Ok(result)) => result,
+            Ok(Err(e)) => return Err(pyo3::exceptions::PyValueError::new_err(e)),
+            Err(err) => {
+                let panic_message = if let Some(s) = err.downcast_ref::<&str>() {
+                    *s
+                } else if let Some(s) = err.downcast_ref::<String>() {
+                    s.as_str()
+                } else {
+                    "Unknown panic occurred"
+                };
+                return Err(pyo3::exceptions::PyRuntimeError::new_err(format!("Rust panic: {}", panic_message)));
+            }
+        };
+        Ok(numpy::array::PyArray1::from_vec_bound(py, result))
+
     }
     m.add_function(pyo3::wrap_pyfunction!(entangle, m)?)?;
+
+    #[pyo3::pyfunction]
+    fn cnot<'py>(
+        py: pyo3::prelude::Python<'py>,
+        py_vec: PyVec<'py>,
+        qubits: (usize, usize),
+    ) -> pyo3::prelude::PyResult<pyo3::Bound<'py, numpy::array::PyArray1<Complex<f64>>>> {
+        let dm = get_dm_ref(py_vec);
+
+        let result = match std::panic::catch_unwind(|| dm.cnot(&qubits)) {
+            Ok(Ok(result)) => result,
+            Ok(Err(e)) => return Err(pyo3::exceptions::PyValueError::new_err(e)),
+            Err(err) => {
+                let panic_message = if let Some(s) = err.downcast_ref::<&str>() {
+                    *s
+                } else if let Some(s) = err.downcast_ref::<String>() {
+                    s.as_str()
+                } else {
+                    "Unknown panic occurred"
+                };
+                return Err(pyo3::exceptions::PyRuntimeError::new_err(format!("Rust panic: {}", panic_message)));
+            }
+        };
+        Ok(numpy::array::PyArray1::from_vec_bound(py, result))
+
+    }
+    m.add_function(pyo3::wrap_pyfunction!(cnot, m)?)?;
 
     #[pyo3::pyfunction]
     fn swap<'py>(
         py: pyo3::prelude::Python<'py>,
         py_vec: PyVec<'py>,
         qubits: (usize, usize),
-    ) -> pyo3::prelude::Bound<'py, numpy::array::PyArray1<Complex<f64>>> {
+    ) -> pyo3::prelude::PyResult<pyo3::Bound<'py, numpy::array::PyArray1<Complex<f64>>>> {
         let dm = get_dm_mut_ref(py_vec);
-        let result = dm.swap(&qubits).unwrap();
-        numpy::IntoPyArray::into_pyarray_bound(result, py)
+
+        let result = match std::panic::catch_unwind(|| dm.swap(&qubits)) {
+            Ok(Ok(result)) => result,
+            Ok(Err(e)) => return Err(pyo3::exceptions::PyValueError::new_err(e)),
+            Err(err) => {
+                let panic_message = if let Some(s) = err.downcast_ref::<&str>() {
+                    *s
+                } else if let Some(s) = err.downcast_ref::<String>() {
+                    s.as_str()
+                } else {
+                    "Unknown panic occurred"
+                };
+                return Err(pyo3::exceptions::PyRuntimeError::new_err(format!("Rust panic: {}", panic_message)));
+            }
+        };
+        Ok(numpy::array::PyArray1::from_vec_bound(py, result))
     }
     m.add_function(pyo3::wrap_pyfunction!(swap, m)?)?;
 
