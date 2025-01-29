@@ -395,18 +395,23 @@ def test_evolve(sv: np.ndarray, op: np.ndarray):
     assert Nqubits_dm == Nqubits_ref
     
     # print(f'nqubits = {Nqubits_dm}')
-    targets = np.random.choice(range(Nqubits_dm), size=2, replace=False)
-
+    targets = tuple(np.random.choice(range(Nqubits_dm), size=2, replace=False))
     dm_after_rs = dm_simu_rs.evolve(dm, op.flatten(), targets)
-    dm_ref = evolve(dm_ref, Nqubits_ref, op, targets)
-    
+    dm_ref = evolve(dm_ref, Nqubits_ref, op.reshape(4, 4), targets)
     #print(f'{dm_simu_rs.get_dm(dm)}')
     #print(f'{dm_ref.flatten()}')
     
     norm_ref = get_norm(dm_ref, Nqubits_ref)
     dm_ref /= norm_ref
+
+    # if Nqubits_dm < 3:
+    #     dm_after_rs = np.array(dm_after_rs).reshape((2 ** Nqubits_dm, 2 ** Nqubits_dm))
+    #     print(f"TEST EVOLVE, nqubits: {Nqubits_dm}, targets = {targets}")
+    #     print(f"initial ref: {sv}")
+    #     print(f"ref output:\n{dm_ref}")
+    #     print(f"rs output:\n{dm_after_rs}")
     
-    np.testing.assert_allclose(dm_after_rs, dm_ref.flatten(), atol=1e-5)
+    np.testing.assert_allclose(dm_after_rs.flatten(), dm_ref.flatten(), atol=1e-5)
 
 @hyp.given(
     sv_st(min=2, max=10),
@@ -442,22 +447,20 @@ def test_entangle(sv):
 
     qargs = tuple(np.random.choice(range(nqubits), size=2, replace=False))
 
-    print("Qubits:", qargs)
-    print("Initial Rust DM:\n", dm_simu_rs.get_dm(rust_dm))
-    print("Initial Ref DM:\n", ref_dm)
 
     dm_after_rs = dm_simu_rs.entangle(rust_dm, qargs)
-    print("Rust DM After CZ:\n", dm_after_rs)
 
     CZ = op_double[1]
-    print("CZ Operator:\n", CZ)
 
-    dm_after_ref = evolve(ref_dm, nqubits, CZ, qargs)
-    print("Reference DM After CZ:\n", dm_after_ref)
+    dm_after_ref = evolve(ref_dm, nqubits, CZ.reshape(4, 4), qargs)
 
-    try:
-        np.testing.assert_almost_equal(dm_after_rs, dm_after_ref.flatten(), decimal=5)
-    except AssertionError as e:
-        print("Assertion Error:", e)
-        raise
+    # if nqubits < 3:
+    #     dm_after_rs = np.array(dm_after_rs).reshape((2 ** nqubits, 2 ** nqubits))
+    #     print(f"TEST ENTANGLE, nqubits: {nqubits}, targets = {qargs}")
+    #     print(f"initial ref: {sv}")
+    #     print(f"ref output:\n{dm_after_ref}")
+    #     print(f"rs output:\n{dm_after_rs}")
+    #     print("=======================================")
+
+    np.testing.assert_almost_equal(dm_after_rs.flatten(), dm_after_ref.flatten(), decimal=5)
 

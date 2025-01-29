@@ -480,45 +480,48 @@ impl DensityMatrix {
     }
 
     pub fn cz(&self, edge: &(usize, usize)) -> Result<Vec<Complex<f64>>, String> {
-        self.evolve(&Operator::two_qubits(TwoQubitsOp::CZ), &[edge.0, edge.1])
-
-        /* Otimized version of control Z gate */
-        /*let (control, target) = *edge;
-
-        // Check that the control and target qubits are within bounds
+        let (control, target) = *edge;
+    
+        // Check bounds
         if control >= self.nqubits || target >= self.nqubits {
             return Err(format!(
                 "Qubit indices out of range: control={}, target={}, nqubits={}",
                 control, target, self.nqubits
             ));
         }
-
-        // Ensure the control and target qubits are distinct
+    
         if control == target {
             return Err("Control and target qubits must be distinct.".to_string());
         }
 
-        // Calculate the bitmask for the control and target qubits
         let control_mask = 1 << (self.nqubits - control - 1);
         let target_mask = 1 << (self.nqubits - target - 1);
-
         let dim = 1 << self.nqubits;
-
-        // Iterate through the density matrix
+    
         let new_dm = (0..dim * dim)
+            .into_par_iter()
             .map(|idx| {
-                let i = idx / dim;
-                let j = idx % dim;
-                if (i & control_mask == 1) && (i & target_mask == 1)
-                    && (j & control_mask == 1) && (j & target_mask == 1) {
+                let i = idx / dim; // Row index
+                let j = idx % dim; // Column index
+
+                // Extract the control and target bits for row and column indices
+                let bi_ctrl = (i & control_mask) >> (self.nqubits - control - 1);
+                let bi_target = (i & target_mask) >> (self.nqubits - target - 1);
+                let bj_ctrl = (j & control_mask) >> (self.nqubits - control - 1);
+                let bj_target = (j & target_mask) >> (self.nqubits - target - 1);
+
+                if (bi_ctrl & bi_target) ^ (bj_ctrl & bj_target) == 1 {
                     -self.data[idx]
-                } else {
+                }
+                else {
                     self.data[idx]
                 }
-            }).collect();
-
-        Ok(new_dm)*/
+            })
+            .collect();
+    
+        Ok(new_dm)
     }
+    
 
     pub fn swap(&self, edge: &(usize, usize)) -> Result<Vec<Complex<f64>>, String> {
         self.evolve(&Operator::two_qubits(TwoQubitsOp::SWAP), &[edge.0, edge.1])
