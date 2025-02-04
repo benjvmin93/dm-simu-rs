@@ -4,6 +4,7 @@ use std::mem;
 
 use num_complex::Complex;
 use rayon::prelude::*;
+use std::sync::Mutex;
 
 use crate::operators::{Operator, TwoQubitsOp};
 use crate::tools::{are_elements_unique, complex_approx_eq};
@@ -530,5 +531,28 @@ impl DensityMatrix {
 
     pub fn cnot(&self, edge: &(usize, usize)) -> Result<Vec<Complex<f64>>, String> {
         self.evolve(&Operator::two_qubits(TwoQubitsOp::CX), &[edge.0, edge.1])
+    }
+
+    pub fn apply_channel(&self, krauss_channel: &Vec<(Complex<f64>, Vec<Complex<f64>>)>, qargs: &[usize]) -> Result<Vec<Complex<f64>>, String> {
+        let size = 1 << self.nqubits;
+        let result = Mutex::new(vec![Complex::ZERO; size * size]); // Use Mutex for thread-safe writes
+
+        krauss_channel
+            .into_par_iter()
+            .for_each(|(coef, op)| {
+                let op = Operator::new(&op).unwrap();
+                let new_dm = self.evolve(&op, qargs).unwrap();
+                let new_coef = coef * coef.conj();
+
+                let mut result_guard = result.lock().unwrap(); // Lock the mutex for access
+                result_guard
+                    .iter_mut()
+                    .zip(new_dm.iter())
+                    .for_each(|(res, new)| {
+                        *res += *new * new_coef;
+                    });
+            });
+
+        Ok(result.into_inner().unwrap())
     }
 }

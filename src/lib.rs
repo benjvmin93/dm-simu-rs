@@ -7,8 +7,10 @@ use exceptions::PyTypeError;
 use num_complex::Complex;
 use numpy::PyArrayMethods;
 use operators::Operator;
-use pyo3::*;
-use types::{PyCapsuleMethods, PyComplex};
+use pyo3::types::{PyComplex, PyListMethods};
+use pyo3::{types::{PyList, PyTuple}, *};
+use pyo3::prelude::PyAnyMethods;
+use types::PyCapsuleMethods;
 
 #[pyo3::pymodule]
 fn dm_simu_rs<'py>(
@@ -369,5 +371,95 @@ fn dm_simu_rs<'py>(
         Ok(())
     }
     m.add_function(pyo3::wrap_pyfunction!(set, m)?)?;
+
+
+    /// Helper function to parse a Python `PyList` of `PyTuple` into `Vec<(Complex<f64>, Vec<Complex<f64>>)>`
+    fn parse_krauss_channel<'py>(
+        krauss_channel: &Bound<'_, PyList>,
+    ) -> PyResult<Vec<(Complex<f64>, Vec<Complex<f64>>)>> {
+        let mut channel_vec: Vec<(Complex<f64>, Vec<Complex<f64>>)> = Vec::new();
+
+        while let Ok(item) = krauss_channel.as_ref().iter() {
+            let item = item.as_ref();
+            let tuple = item.downcast::<PyTuple>()?;
+            if tuple.len()? != 2 {
+                return Err(pyo3::exceptions::PyValueError::new_err(
+                    "Each Krauss channel element must be a tuple (complex, list of complex)",
+                ));
+            }
+
+            // Extract the coefficient (a single complex number)
+            let coef: Complex<f64> = extract_complex(tuple.get_item(0)?.extract()?)?;
+
+            // Extract the operator (a list of complex numbers)
+            let op_list: Vec<Complex<f64>> = tuple
+                .get_item(1)?.downcast::<PyList>()?
+                .iter()
+                .map(|op| extract_complex(op.extract()?))
+                .into_iter().collect::<PyResult<Vec<Complex<f64>>>>()?;
+
+            // Push the tuple (coef, op_list) into the vector
+            channel_vec.push((coef, op_list));
+        }
+
+        Ok(channel_vec)
+    }
+
+    /// Extracts a Python complex number into a Rust `Complex<f64>`
+    fn extract_complex(obj: &PyAny) -> PyResult<Complex<f64>> {
+        let real: f64 = obj.getattr("real")?.extract()?;
+        let imag: f64 = obj.getattr("imag")?.extract()?;
+        Ok(Complex { re: real, im: imag })
+    }
+
+    #[pyfunction]
+    fn apply_channel<'py>(
+        py: Python<'py>,
+        dm_object: PyVec<'py>, // Assume `get_dm_mut_ref` will handle this appropriately
+        krauss_channel: &Bound<'_, PyList>,
+        qargs: Vec<usize>,
+    ) -> PyResult<()> {
+
+        let new_krauss_channel: Vec<(Complex<f64>, Vec<Complex<f64>>)> = krauss_channel
+            .iter()
+            .map(|x| {
+                let tuple = x.downcast::<PyTuple>()?;
+                if tuple.len()? != 2 {
+                    return Err(pyo3::exceptions::PyValueError::new_err(
+                        "Each Krauss channel element must be a tuple (complex, list of complex)",
+                    ));
+                }
+                let coef = extract_complex(tuple.get_item(0)?.extract()?)?;
+                let py_op = tuple.get_item(1)?;
+                let py_op = py_op.downcast::<PyList>()?;
+
+                let op: Vec<Complex<f64>> = py_op
+                .iter()
+                .map(|op_data| {
+                    extract_complex(op_data.extract()?)
+                })
+                .collect::<PyResult<Vec<Complex<f64>>>>()?;
+
+                Ok((coef, op))
+            }).collect::<PyResult<Vec<(Complex<f64>, Vec<Complex<f64>>)>>>()?;
+
+        /*for (coef, operator) in &new_krauss_channel {
+            // coef is Complex<f64>, operator is Vec<Complex<f64>>
+            println!("Coefficient: {:?}", coef);
+            println!("Operator: {:?}", operator);
+        }*/
+
+        let dm = get_dm_mut_ref(dm_object);
+
+        // Apply the Krauss channel to the density matrix
+        let mut result = dm.apply_channel(&new_krauss_channel, &qargs).unwrap();
+
+        // Swap the result back into the density matrix
+        std::mem::swap(&mut dm.data, &mut result);
+
+        Ok(())
+    }
+    m.add_function(pyo3::wrap_pyfunction!(apply_channel, m)?)?;
+
     Ok(())
 }
