@@ -21,7 +21,6 @@ pub enum State {
 // 1D representation of a size * size density matrix.
 pub struct DensityMatrix {
     pub data: Vec<Complex<f64>>,
-    pub size: usize, // 2 ** nqubits
     pub nqubits: usize,
 }
 
@@ -36,7 +35,6 @@ impl DensityMatrix {
         return DensityMatrix {
             nqubits: 0,
             data: vec![Complex::ONE],
-            size: 1
         }
     }
     // By default initialize in |0>.
@@ -51,7 +49,6 @@ impl DensityMatrix {
                 // Set density matrix to |+><+| \otimes n
                 let mut dm = Self {
                     data: vec![Complex::ONE; size * size],
-                    size,
                     nqubits,
                 };
                 dm.data = dm
@@ -65,7 +62,6 @@ impl DensityMatrix {
                 // Set density matrix to |0><0| \otimes n
                 let mut dm = Self {
                     data: vec![Complex::ZERO; size * size],
-                    size,
                     nqubits,
                 };
                 dm.data[0] = Complex::ONE;
@@ -74,7 +70,6 @@ impl DensityMatrix {
             State::ONE => {
                 let mut dm = Self {
                     data: vec![Complex::ZERO; size * size],
-                    size,
                     nqubits,
                 };
                 // Generate the binary vector for |1>
@@ -84,7 +79,6 @@ impl DensityMatrix {
             State::MINUS => {
                 let mut dm = Self {
                     data: vec![Complex::ZERO; size * size],
-                    size,
                     nqubits,
                 };
 
@@ -122,7 +116,6 @@ impl DensityMatrix {
         }
         Ok(DensityMatrix {
             data,
-            size,
             nqubits,
         })
     }
@@ -139,23 +132,23 @@ impl DensityMatrix {
 
         Ok(DensityMatrix {
             data: vec.to_vec(),
-            size: 1 << dim / 2,
             nqubits: dim / 2,
         })
     }
 
     pub fn print(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let size = 1 << self.nqubits;
         write!(f, "[")?;
-        for i in 0..self.size {
+        for i in 0..size {
             write!(f, "[")?;
-            for j in 0..self.size {
-                write!(f, "{}", self.data[i * self.size + j])?;
-                if j != self.size - 1 {
+            for j in 0..size {
+                write!(f, "{}", self.data[i * size + j])?;
+                if j != size - 1 {
                     write!(f, ", ")?;
                 }
             }
             write!(f, "]")?;
-            if i == self.size - 1 {
+            if i == size - 1 {
                 write!(f, "]")?;
             }
             writeln!(f, "")?;
@@ -165,12 +158,14 @@ impl DensityMatrix {
 
     // Access element at row i and column j
     pub fn get(&self, i: usize, j: usize) -> Complex<f64> {
-        self.data[i * self.size + j]
+        let size = 1 << self.nqubits;
+        self.data[i * size + j]
     }
 
     // Set element at row i and column j
     pub fn set(&mut self, i: usize, j: usize, value: Complex<f64>) {
-        self.data[i * self.size + j] = value;
+        let size = 1 << self.nqubits;
+        self.data[i * size + j] = value;
     }
 
     pub fn expectation_single(&self, op: &Operator, index: usize) -> Result<Complex<f64>, &str> {
@@ -179,6 +174,7 @@ impl DensityMatrix {
         }
 
         let index_mask = 1 << (self.nqubits - index - 1);
+        let size = 1 << self.nqubits;
 
         // Parallel computation of expectation
         let expectation = self
@@ -186,8 +182,8 @@ impl DensityMatrix {
             .par_iter()
             .enumerate()
             .map(|(idx, &rho_elt)| {
-                let i = idx / self.size;
-                let j = idx % self.size;
+                let i = idx / size;
+                let j = idx % size;
 
                 if (i & !index_mask) == (j & !index_mask) {
                     let op_i = (i & index_mask) >> (self.nqubits - index - 1);
@@ -205,7 +201,7 @@ impl DensityMatrix {
 
     pub fn trace(&self) -> Complex<f64> {
         // Direct indexing for trace calculation
-        (0..self.size).map(|i| self.data[i * self.size + i]).sum()
+        (0..1 << self.nqubits).map(|i| self.data[i * size + i]).sum()
     }
     
     pub fn normalize(&mut self) {
@@ -269,14 +265,6 @@ impl DensityMatrix {
                         return;
                     }
 
-                    // println!("idx: {idx}, i: {i}, j: {j}, i_prime: {i_prime}, j_prime: {j_prime}");
-                    // println!("op[b_i, p]: {}, self[{}, {}]: {}, op[b_j, q].conj(): {}\n",
-                    //     op.data.data[b_i * 2 + p],
-                    //     i_prime,
-                    //     j_prime,
-                    //     self.data.data[i_prime * dim + j_prime],
-                    //     op.data.data[b_j * 2 + q].conj()
-                    // );
                     sum += op.data[b_i * 2 + p] * self.data[data_idx] * op.data[b_j * 2 + q].conj();
                 });
                 sum
@@ -398,8 +386,9 @@ impl DensityMatrix {
         // Update the number of qubits in `self`
         self.nqubits += other.nqubits;
 
+        let size = 1 << self.nqubits;
         // Calculate the new size and shape for the resulting tensor
-        let new_dim = self.size * other.size;
+        let new_dim = size * other.size;
 
         // Compute the tensor product in parallel
         let result = (0..new_dim * new_dim)
@@ -414,7 +403,7 @@ impl DensityMatrix {
             let (self_col, other_col) = (j / other.size, j % other.size);
 
             // Retrieve elements from `self` and `other`
-            let self_data = self.data[self_row * self.size + self_col];
+            let self_data = self.data[self_row * size + self_col];
             let other_data = other.data[other_row * other.size + other_col];
 
             // Compute and store the result
@@ -423,7 +412,6 @@ impl DensityMatrix {
 
         // Update `self` with the resulting tensor
         self.data = result;
-        self.size = new_dim; // Update the size for consistency
     }
 
     pub fn ptrace(&mut self, qargs: &[usize]) -> Result<(), &str> {
@@ -476,7 +464,6 @@ impl DensityMatrix {
         // Update density matrix with the reduced one
         self.data = reduced_dm;
         self.nqubits -= qargs.len();
-        self.size = 1 << self.nqubits;
         Ok(())
     }
 
