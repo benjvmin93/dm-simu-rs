@@ -201,6 +201,7 @@ impl DensityMatrix {
 
     pub fn trace(&self) -> Complex<f64> {
         // Direct indexing for trace calculation
+        let size = 1 << self.nqubits;
         (0..1 << self.nqubits).map(|i| self.data[i * size + i]).sum()
     }
     
@@ -387,8 +388,9 @@ impl DensityMatrix {
         self.nqubits += other.nqubits;
 
         let size = 1 << self.nqubits;
+        let size_other = 1 << other.nqubits;
         // Calculate the new size and shape for the resulting tensor
-        let new_dim = size * other.size;
+        let new_dim = size * size_other;
 
         // Compute the tensor product in parallel
         let result = (0..new_dim * new_dim)
@@ -399,12 +401,12 @@ impl DensityMatrix {
             let j = idx % new_dim;
 
             // Decompose indices into `self` and `other` components
-            let (self_row, other_row) = (i / other.size, i % other.size);
-            let (self_col, other_col) = (j / other.size, j % other.size);
+            let (self_row, other_row) = (i / size_other, i % size_other);
+            let (self_col, other_col) = (j / size_other, j % size_other);
 
             // Retrieve elements from `self` and `other`
             let self_data = self.data[self_row * size + self_col];
-            let other_data = other.data[other_row * other.size + other_col];
+            let other_data = other.data[other_row * size_other + other_col];
 
             // Compute and store the result
             self_data * other_data
@@ -512,7 +514,46 @@ impl DensityMatrix {
     
 
     pub fn swap(&self, edge: &(usize, usize)) -> Result<Vec<Complex<f64>>, String> {
-        self.evolve(&Operator::two_qubits(TwoQubitsOp::SWAP), &[edge.0, edge.1])
+        let (control, target) = *edge;
+    
+        // Check bounds
+        if control >= self.nqubits || target >= self.nqubits {
+            return Err(format!(
+                "Qubit indices out of range: control={}, target={}, nqubits={}",
+                control, target, self.nqubits
+            ));
+        }
+    
+        if control == target {
+            return Err("Control and target qubits must be distinct.".to_string());
+        }
+
+        let control_mask = 1 << (self.nqubits - control - 1);
+        let target_mask = 1 << (self.nqubits - target - 1);
+        let dim = 1 << self.nqubits;
+    
+        let new_dm = (0..dim * dim)
+            .into_par_iter()
+            .map(|idx| {
+                let i = idx / dim; // Row index
+                let j = idx % dim; // Column index
+
+                // Extract the control and target bits for row and column indices
+                let bi_ctrl = (i & control_mask) >> (self.nqubits - control - 1);
+                let bi_target = (i & target_mask) >> (self.nqubits - target - 1);
+                let bj_ctrl = (j & control_mask) >> (self.nqubits - control - 1);
+                let bj_target = (j & target_mask) >> (self.nqubits - target - 1);
+
+                if (bi_ctrl & bi_target) ^ (bj_ctrl & bj_target) == 1 {
+                    -self.data[idx]
+                }
+                else {
+                    self.data[idx]
+                }
+            })
+            .collect();
+    
+        Ok(new_dm)
 
     }
 
