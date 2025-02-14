@@ -384,9 +384,6 @@ impl DensityMatrix {
      ** Would like to generalize it to the tensor struct with the tensor.product method.
      */
     pub fn tensor(&mut self, other: &DensityMatrix) {
-        // Update the number of qubits in `self`
-        self.nqubits += other.nqubits;
-
         let size = 1 << self.nqubits;
         let size_other = 1 << other.nqubits;
         // Calculate the new size and shape for the resulting tensor
@@ -414,6 +411,7 @@ impl DensityMatrix {
 
         // Update `self` with the resulting tensor
         self.data = result;
+        self.nqubits += other.nqubits;
     }
 
     pub fn ptrace(&mut self, qargs: &[usize]) -> Result<(), &str> {
