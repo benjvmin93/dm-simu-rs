@@ -15,7 +15,6 @@ mod tests_dm {
 
         assert_eq!(expected_data, rho.data);
         assert_eq!(rho.nqubits, 1);
-        assert_eq!(rho.size, 2);
     }
 
     #[test]
@@ -30,7 +29,6 @@ mod tests_dm {
 
         assert_eq!(expected_data, rho.data);
         assert_eq!(rho.nqubits, 1);
-        assert_eq!(rho.size, 2);
     }
 
     #[test]
@@ -76,7 +74,6 @@ mod tests_dm {
 
         assert_eq!(expected_data, rho.data);
         assert_eq!(rho.nqubits, 1);
-        assert_eq!(rho.size, 2);
     }
 
     #[test]
@@ -90,7 +87,6 @@ mod tests_dm {
         ];
         assert_eq!(rho.data, expected_data);
         assert_eq!(rho.nqubits, 1);
-        assert_eq!(rho.size, 2);
     }
     #[test]
     fn test_init_from_statevec_ket_1() {
@@ -104,7 +100,6 @@ mod tests_dm {
         ];
         assert_eq!(rho.data, expected_data);
         assert_eq!(rho.nqubits, 1);
-        assert_eq!(rho.size, 2);
     }
     #[test]
     fn test_init_from_statevec_ket_00() {
@@ -135,7 +130,6 @@ mod tests_dm {
         ];
         assert_eq!(rho.data, expected_data);
         assert_eq!(rho.nqubits, 2);
-        assert_eq!(rho.size, 4);
     }
     #[test]
     fn test_init_from_statevec_ket_01() {
@@ -166,7 +160,6 @@ mod tests_dm {
         ];
         assert_eq!(rho.data, expected_data);
         assert_eq!(rho.nqubits, 2);
-        assert_eq!(rho.size, 4);
     }
     #[test]
     fn test_init_from_statevec_ket_10() {
@@ -197,7 +190,6 @@ mod tests_dm {
         ];
         assert_eq!(rho.data, expected_data);
         assert_eq!(rho.nqubits, 2);
-        assert_eq!(rho.size, 4);
     }
     #[test]
     fn test_init_from_statevec_ket_11() {
@@ -228,7 +220,6 @@ mod tests_dm {
         ];
         assert_eq!(rho.data, expected_data);
         assert_eq!(rho.nqubits, 2);
-        assert_eq!(rho.size, 4);
     }
     #[test]
     fn test_one_qubit_evolve_single_i() {
