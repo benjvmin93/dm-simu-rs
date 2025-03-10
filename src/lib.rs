@@ -412,7 +412,7 @@ fn dm_simu_rs<'py>(
         Ok(Complex { re: real, im: imag })
     }
 
-    #[pyfunction]
+    #[pyo3::pyfunction]
     fn apply_channel<'py>(
         py: Python<'py>,
         dm_object: PyVec<'py>, // Assume `get_dm_mut_ref` will handle this appropriately
@@ -442,12 +442,6 @@ fn dm_simu_rs<'py>(
 
                 Ok((coef, op))
             }).collect::<PyResult<Vec<(Complex<f64>, Vec<Complex<f64>>)>>>()?;
-
-        /*for (coef, operator) in &new_krauss_channel {
-            // coef is Complex<f64>, operator is Vec<Complex<f64>>
-            println!("Coefficient: {:?}", coef);
-            println!("Operator: {:?}", operator);
-        }*/
 
         let dm = get_dm_mut_ref(dm_object);
 
