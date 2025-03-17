@@ -18,7 +18,7 @@ def check_and_install_dependency(cmd, install_cmd, package):
 # Check and install Cargo if missing
 check_and_install_dependency(
     ["cargo", "--version"],
-    "curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y && source $HOME/.cargo/env",
+    "curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh && source $HOME/.cargo/env",
     "Cargo (Rust)"
 )
 
